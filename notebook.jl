@@ -51,13 +51,13 @@ ImageShow.simshow(x::CuArray, kwargs...) = simshow(Array(x), kwargs...)
 md"# 1. Generate a Ball lens"
 
 # ╔═╡ 1397b1f7-599b-4df5-ad4d-8f626e527a26
-N1 = 512 
+N1 = 256
 
 # ╔═╡ 97f4e89f-b946-41a8-bfa8-b5325580e143
 L1 = 50f-6
 
 # ╔═╡ bdae79e7-5976-4a2e-b3da-be809d8de95f
-Nz1 = 200
+Nz1 = 256
 
 # ╔═╡ fe605fa6-b394-4531-8fff-93d7e755e8bb
 n_air = 1.0f0
@@ -78,7 +78,69 @@ x1 = y1';
 z1 = reshape(togoc(range(-35f-6, 20f-6, Nz1 + 1)[begin:end-1]), 1, 1, Nz1)
 
 # ╔═╡ 94fe19f5-dea0-48aa-9b64-e38961ea1176
-lens1 = ((x1.^2 .+ y1.^2 .+ (z1 .+ 15f-6).^2) .<= (15f-6)^2) * (n_glass .- n_air) .+ n_air;
+lens1 = ((0 .* x1.^2 .+ y1.^2 .+ (z1 .+ 15f-6).^2) .<= (15f-6)^2) * (n_glass .- n_air) .+ n_air;
+
+# ╔═╡ 9a02ea73-f2c1-4482-b19d-510eeeaac5d9
+lens2 = ((0 .* x1.^2 .+ y1.^2 .+ (z1 .+ 15f-6).^2) .<= (15f-6)^2) * (n_glass .- n_air) .+ n_air;
+
+# ╔═╡ 25c26f57-c5a4-4137-a8e2-407cbc9c7dbe
+function make_smooth_lens(_x, _y, _z, n_glass, n_air, N=50)
+	x = Array(_x)
+	y = Array(_y)
+	z = Array(_z)
+
+	
+	lens = Array(0 .* x .* y .* z)
+
+	Δx = abs.(x[1] - x[2])	
+	Δy = abs.(y[1] - y[2])
+	Δz = abs.(z[1] - z[2])
+
+	
+	Threads.@threads for iz in 1:length(z)
+		for ix in 1:length(x)
+			for iy in 1:length(y)
+				counter = 0
+				for _ in 1:N
+					xp = x[ix] + rand(range(-0.5, 0.5, 1000)) * Δx
+					yp = y[iy] + rand(range(-0.5, 0.5, 1000)) * Δy
+					zp = z[iz] + rand(range(-0.5, 0.5, 1000)) * Δz
+					counter += ((0 *xp^2 + yp^2 + (zp + 15f-6)^2) <= (15f-6)^2)
+				end
+				#if counter > 0
+					#@show "yoha"
+				#end
+				lens[iy, ix, iz] = Float32(counter / N) * (n_glass - n_air)
+			end
+			#return lens
+		end
+	end
+	return lens
+end
+
+# ╔═╡ 64c78983-cfe6-43d3-9b8d-1354f7d7852f
+length(z1)
+
+# ╔═╡ 90fa61cf-b277-4537-86fb-15d2c45a2654
+size(x1)
+
+# ╔═╡ c2aac6a8-8daa-4cac-adff-e7dec47992b2
+@time lens_smooth = make_smooth_lens(x1, y1, z1, n_glass, n_air);
+
+# ╔═╡ b2f12e64-ab9c-496b-b765-6795c63f1bb5
+sum(lens_smooth)
+
+# ╔═╡ c5cb50fa-20ce-4c2d-8cbb-bb0be9135f03
+@bind iz3 PlutoUI.Slider(1:size(lens1, 3))
+
+# ╔═╡ 3b533391-54a1-4930-8b1a-39a737f9c481
+heatmap(Array(lens_smooth[:, :, iz3]))
+
+# ╔═╡ 0f7e509f-804a-45f2-8149-792bb2583d16
+
+
+# ╔═╡ 66e9d245-6560-4e32-879e-e8eccc771668
+
 
 # ╔═╡ 2426ed8a-d01b-4f7a-b22d-447dc132fcba
 @bind iz1 PlutoUI.Slider(1:size(lens1, 3))
@@ -89,8 +151,11 @@ heatmap(Array(lens1[:, :, iz1]))
 # ╔═╡ cf59abb3-2d6f-47af-9975-26527aff2815
 heatmap(Array(z1)[:], Array(x1)[:], Array(lens1[:, N1÷2+1, :]))
 
+# ╔═╡ 2c14bd6f-8744-46b8-8248-9446f6817a8e
+
+
 # ╔═╡ 589bf363-91b6-4381-902b-092da1e8c96e
-w1 = 15f-6
+w1 = 50f-6
 
 # ╔═╡ ddf01f2c-8b7e-459c-86c5-f01f1c6aaa3c
 beam = ComplexF32.(exp.(-(x1.^2 .+ y1.^2) ./ (w1^2)));
@@ -98,11 +163,11 @@ beam = ComplexF32.(exp.(-(x1.^2 .+ y1.^2) ./ (w1^2)));
 # ╔═╡ 36537308-0263-4555-9096-a90786849554
 λ = 633f-9
 
+# ╔═╡ 9e421340-d84d-45ad-9ce0-c511b5d249ce
+CUDA.@allowscalar (z1[2] - z1[1]) * 2π / λ# * 0.5
+
 # ╔═╡ 0537bafa-e13d-4ff1-92bc-6bbc35baa5d2
 heatmap(Array(beam) .|> abs)
-
-# ╔═╡ 4752fb90-b0a3-4883-b6b6-ffc5144fbe84
-2.7499482f-8 * size(lens1, 3)
 
 # ╔═╡ 8d954853-9d03-459e-bd54-626c7e77c49c
 @bind iz2 PlutoUI.Slider(1:size(lens1, 3))
@@ -113,8 +178,44 @@ thick_lens(n, R1, R2, D) = inv((n - 1) * (1 / R1 - 1 / R2 + (n - 1) * D /(n * R1
 # ╔═╡ 65642872-ebf5-464d-91af-575b440d60d9
 thick_lens(1.5, 15f-6, -15f-6, (30f-6)) - 15f-6
 
+# ╔═╡ d03c9dbc-ca0a-467e-8efa-cd9dbbde07b9
+md"# Smooth border"
+
+# ╔═╡ c8a79512-a89d-4d0a-870f-51d28b794c86
+
+
+# ╔═╡ 932df6a9-3494-4e18-9f8e-3d05a6950446
+
+
+# ╔═╡ cef65203-91f6-4879-98b7-3419d1d98e12
+
+
+# ╔═╡ f44cc074-3f93-4f0a-a584-6788215c5754
+md"# WPM"
+
+# ╔═╡ 7d63ab53-1ced-4206-a030-d062721c245d
+
+
 # ╔═╡ 428bb0ad-130c-41eb-a803-6f39b5003f78
 
+
+# ╔═╡ 3a5bf482-8a6e-40a0-a97e-94d3d65a29cb
+md"# test implementation"
+
+# ╔═╡ b02b55f8-9f0e-4b9b-ab0f-ac1ed65e8e8a
+λ
+
+# ╔═╡ a3bf16ad-d330-4569-bc58-c0cdaadd187f
+beam_focus = beam .* cis.(.- (2f0 * π) / λ / 2 / 54.7f-6 .*(x1.^2 .+ y1.^2));
+
+# ╔═╡ edabaac6-315c-47ea-8b08-1afd030f7a09
+CUDA.@allowscalar z1[begin] - z1[end]
+
+# ╔═╡ 36e74bb9-0c64-4d0b-aa8a-fb8b45096601
+
+
+# ╔═╡ 1961dc92-6b90-4f5f-a3b6-f5862fa00478
+md"# Utility functions"
 
 # ╔═╡ 3b82958b-9514-483d-b4a9-61a1cf0d0800
 """
@@ -281,20 +382,19 @@ function plan_multi_slice(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1) wh
 
 	buffer1 = similar(beam, 2 .* size(beam)[1:2])
 	buffer2 = similar(buffer1)
-	p = plan_fft(buffer1)
+	p = plan_fft(buffer1, (1,2))
 
 	M = 2
 	L_pad = M * L
 
 
-	k = CT(2π) / λ
+	k = CT(2π) / λ * n0
 
-	
 	Ns = size(beam)[1:2] .* M
 	# sample spacing
 	dx = L_pad ./ Ns
 	# frequency spacing
-	df = 1 ./ L_pad 
+	df = 1 ./ L_pad
     # total size in frequency space
 	Lf = Ns .* df
 	# frequencies centered around first entry 
@@ -305,11 +405,10 @@ function plan_multi_slice(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1) wh
 	f_x .= fftfreq(Ns[2], Lf[2])'
 
 	@show size(f_y), size(f_x)
-	CUDA.@allowscalar dz = z[2] - z[1]
-	@show dz
-	H = exp.(1im .* k .* abs.(dz) .* sqrt.(CT(1) .- abs2.(f_x .* λ) .- abs2.(f_y .* λ)))
+	CUDA.@allowscalar dz = abs(z[2] - z[1])
 
-	p = plan_fft(buffer2)
+	H = exp.(1im .* k .* abs.(dz) .* sqrt.(CT(1) .- abs2.(f_x .* λ ./ n0) .- abs2.(f_y .* λ ./ n0)))
+
 
 
 	f = let p=p, H=H, z=z, buffer1=buffer1, buffer2=buffer2, dz=dz, k=k
@@ -317,8 +416,8 @@ function plan_multi_slice(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1) wh
 			field_history = similar(field, (size(field)[1:2]..., size(medium, 3) + 1))
 			field_history[:, :, 1] .= field
 			for i in axes(medium, 3)
-				field = @view field_history[:, :, i]
-				field .*= @views exp.(1im .* k .* (medium[:, :, i] .- n0) * dz)
+				field = field_history[:, :, i]
+				field .*= @views exp.(1im .* k .* (medium[:, :, i] .- n0) .* dz)
 			    fill!(buffer2, 0)
 			    fieldp = set_center!(buffer2, field)
 			    field_imd = p * ifftshift!(buffer1, fieldp, (1, 2))
@@ -336,20 +435,131 @@ function plan_multi_slice(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1) wh
 end
 
 # ╔═╡ 79d5496c-d9a1-442e-b69a-ffac33288ab1
-MS, H = plan_multi_slice(beam, lens1, z1[:], λ, L1)
+MS, H = plan_multi_slice(beam, lens1, z1[:], λ, L1, n0=1f0)
 
 # ╔═╡ 71f0f949-32ec-4cb0-ae8a-5c1091d82796
-result = MS(beam);
+@mytime result = MS(beam);
+
+# ╔═╡ 611a6aba-1c2f-4c05-ae36-3c646fdaedc4
+begin
+	heatmap(Array(z1)[:], Array(x1)[:], Array(abs2.(result[:, size(result, 2)÷2 + 1, begin:end-1])).^0.5, grid=:white)
+	vline!(7.5f-6:7.5f-6, c=:white)
+	#heatmap(Array(z1)[begin:end-1], Array(x1)[:], Array(lens1[:, 257, begin:end-1]), grid=:white)
+end
 
 # ╔═╡ f7c6afc4-46f2-4e1f-8db5-0b80574daa74
 heatmap(Array(view(result, :, :, iz2) .|> abs2))
 
-# ╔═╡ 611a6aba-1c2f-4c05-ae36-3c646fdaedc4
+# ╔═╡ 150cae90-4709-4adc-9933-d2bd073d49a2
+MS_smooth, _ = plan_multi_slice(beam, CuArray(lens_smooth), z1[:], λ, L1, n0=1f0)
+
+# ╔═╡ 2155a928-59e5-42b5-b98c-c83133260b18
+@mytime result_smooth = MS_smooth(beam);
+
+# ╔═╡ 7b5d3741-1f0f-42f1-9aba-24d5b3630a9b
 begin
-	heatmap(Array(z1)[:], Array(x1)[:], Array(abs2.(result[:, 257, begin:end-1])).^0.1, grid=:white)
+	heatmap(Array(z1)[:], Array(x1)[:], Array(abs2.(result_smooth[:, size(result_smooth, 2)÷2 + 1, begin:end-1])).^0.5, grid=:white)
 	vline!(7.5f-6:7.5f-6, c=:white)
 	#heatmap(Array(z1)[begin:end-1], Array(x1)[:], Array(lens1[:, 257, begin:end-1]), grid=:white)
 end
+
+# ╔═╡ 4c2f6105-3cff-4e81-b727-388a4766543f
+WPM_test, _ = plan_multi_slice(beam, lens1 .* 0 .+ 1, z1[:], λ, L1, n0=1f0)
+
+# ╔═╡ 1960f63b-b570-4688-b46a-b64bc530691e
+beam_focused = WPM_test(beam_focus);
+
+# ╔═╡ 10951b0a-f37f-4c9a-b903-2d1c91769dbc
+begin
+	heatmap(Array(z1)[:], Array(x1)[:], Array(abs2.(beam_focused[:, size(beam_focused, 2)÷2 + 1, begin:end-1])).^0.5, grid=:white)
+	vline!(7.5f-6:7.5f-6, c=:white)
+	#heatmap(Array(z1)[begin:end-1], Array(x1)[:], Array(lens1[:, 257, begin:end-1]), grid=:white)
+end
+
+# ╔═╡ 6fd65d63-65c9-4bc9-8259-376387e0b69d
+function plan_WPM(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1, n_lens=1.5f0) where CT
+
+	buffer1 = similar(beam, (2 .* size(beam)[1:2]..., 2))
+	buffer2 = similar(buffer1)
+	p = plan_fft(buffer1, (1,2))
+
+	M = 2
+	L_pad = M * L
+
+
+	k = CT(2π) / λ * n0
+
+	Ns = size(beam)[1:2] .* M
+	# sample spacing
+	dx = L_pad ./ Ns
+	# frequency spacing
+	df = 1 ./ L_pad
+    # total size in frequency space
+	Lf = Ns .* df
+	# frequencies centered around first entry 
+	# 1D vectors each
+	f_y = similar(beam, real(eltype(beam)), (Ns[1], 1))
+	f_y .= fftfreq(Ns[1], Lf[1])
+	f_x = similar(beam, real(eltype(beam)), (1, Ns[2]))
+	f_x .= fftfreq(Ns[2], Lf[2])'
+
+	@show size(f_y), size(f_x)
+	CUDA.@allowscalar dz = abs(z[2] - z[1])
+
+	
+	H_air = exp.(1im .* k .* abs.(dz) .* sqrt.(CT(1) .- abs2.(f_x .* λ ./ n0) .- abs2.(f_y .* λ ./ n0)))
+	
+	H_lens = exp.(1im .* k .* n_lens .* abs.(dz) .* sqrt.(CT(1) .- abs2.(f_x .* λ ./ n_lens) .- abs2.(f_y .* λ ./ n_lens)))
+
+	H = cat(H_air, H_lens, dims=3)
+
+	f = let p=p, H=H, z=z, buffer1=buffer1, buffer2=buffer2, dz=dz, k=k
+		function f(_field)
+			field = repeat(_field, 1,1,2)
+			
+			field_history = similar(_field, (size(_field)[1:2]..., size(medium, 3) + 1))
+			field_history[:, :, 1] .= field[:, :, 1]
+			for i in axes(medium, 3)
+				field .= field_history[:, :, i]
+				# apply small multi slice step
+				field[:, :, 1] .*= @views exp.(1im .* k .* (medium[:, :, i] .- n0) .* dz)
+				field[:, :, 2] .*= @views exp.(1im .* k .* (medium[:, :, i] .- n_lens) .* dz)
+
+				# convolution here
+			    fill!(buffer2, 0)
+			    fieldp = set_center!(buffer2, field)
+			    field_imd = p * ifftshift!(buffer1, fieldp, (1, 2))
+			    field_imd .*= H
+			    field_out = fftshift!(buffer2, inv(p) * field_imd, (1, 2))
+				field_out_cropped = crop_center(field_out, (size(field)))
+
+				# assemble field parts
+				field_history[:, :, i + 1] .= field_out_cropped[:, :, 1] .* (medium[:, :, i] .≈ n0) .+  field_out_cropped[:, :, 2] .* (medium[:, :, i] .≈ 1.5f0)
+			end
+			return field_history
+		end
+	end
+	return f, H
+end
+
+# ╔═╡ ec4a4ae1-b201-4e1c-bbc0-16f47813240e
+WPM, H2 = plan_WPM(beam, lens1, z1[:], λ, L1, n0=1f0, n_lens=1.5f0)
+
+# ╔═╡ ff7bc968-4fb0-4e0c-9e99-25d9298a6d93
+@mytime result_wpm = WPM(beam);
+
+# ╔═╡ 1969105b-a579-4f05-a7b6-4af7cb1b259e
+sum(result_wpm[:,:,1])
+
+# ╔═╡ 98f00b68-07bd-4861-a820-8de833d15444
+begin
+	heatmap(Array(z1)[:], Array(x1)[:], Array(abs2.(result_wpm[:, size(result_wpm, 2)÷2 +1, begin:end-1])).^0.9, grid=:white)
+	vline!(7.5f-6:7.5f-6, c=:white)
+	heatmap(Array(lens1[:, size(result_wpm, 2)÷2 +1, begin:end-1]), grid=:white)
+end
+
+# ╔═╡ da74cf7d-42e6-495b-a336-c3b6c93236c9
+simshow(Array(abs2.(result_wpm))[:, :, 1])
 
 # ╔═╡ df0852dd-90e5-4493-8732-85140365904a
 
@@ -2197,24 +2407,59 @@ version = "1.4.1+1"
 # ╠═28e3d7bc-df79-4618-b723-9766706e1726
 # ╠═ed9fce6a-416c-41a5-a3df-cbd380dee960
 # ╠═94fe19f5-dea0-48aa-9b64-e38961ea1176
+# ╠═9a02ea73-f2c1-4482-b19d-510eeeaac5d9
+# ╠═25c26f57-c5a4-4137-a8e2-407cbc9c7dbe
+# ╠═64c78983-cfe6-43d3-9b8d-1354f7d7852f
+# ╠═90fa61cf-b277-4537-86fb-15d2c45a2654
+# ╠═c2aac6a8-8daa-4cac-adff-e7dec47992b2
+# ╠═b2f12e64-ab9c-496b-b765-6795c63f1bb5
+# ╠═c5cb50fa-20ce-4c2d-8cbb-bb0be9135f03
+# ╠═3b533391-54a1-4930-8b1a-39a737f9c481
+# ╠═0f7e509f-804a-45f2-8149-792bb2583d16
+# ╠═66e9d245-6560-4e32-879e-e8eccc771668
 # ╠═2426ed8a-d01b-4f7a-b22d-447dc132fcba
 # ╠═4c4505d5-ab90-4b07-935d-1b7daaa2a368
 # ╠═cf59abb3-2d6f-47af-9975-26527aff2815
+# ╠═9e421340-d84d-45ad-9ce0-c511b5d249ce
+# ╠═2c14bd6f-8744-46b8-8248-9446f6817a8e
 # ╠═17a0fb88-f01f-4940-85bb-1283f0bfc74e
+# ╠═6fd65d63-65c9-4bc9-8259-376387e0b69d
 # ╠═589bf363-91b6-4381-902b-092da1e8c96e
 # ╠═ddf01f2c-8b7e-459c-86c5-f01f1c6aaa3c
 # ╠═36537308-0263-4555-9096-a90786849554
 # ╠═0537bafa-e13d-4ff1-92bc-6bbc35baa5d2
 # ╠═79d5496c-d9a1-442e-b69a-ffac33288ab1
-# ╠═4752fb90-b0a3-4883-b6b6-ffc5144fbe84
 # ╠═71f0f949-32ec-4cb0-ae8a-5c1091d82796
 # ╠═8d954853-9d03-459e-bd54-626c7e77c49c
-# ╠═f7c6afc4-46f2-4e1f-8db5-0b80574daa74
 # ╠═611a6aba-1c2f-4c05-ae36-3c646fdaedc4
+# ╠═f7c6afc4-46f2-4e1f-8db5-0b80574daa74
 # ╠═3a140115-81a4-491f-9f1b-9e3188c20ded
 # ╠═65642872-ebf5-464d-91af-575b440d60d9
+# ╟─d03c9dbc-ca0a-467e-8efa-cd9dbbde07b9
+# ╠═150cae90-4709-4adc-9933-d2bd073d49a2
+# ╠═2155a928-59e5-42b5-b98c-c83133260b18
+# ╠═7b5d3741-1f0f-42f1-9aba-24d5b3630a9b
+# ╠═c8a79512-a89d-4d0a-870f-51d28b794c86
+# ╠═932df6a9-3494-4e18-9f8e-3d05a6950446
+# ╠═cef65203-91f6-4879-98b7-3419d1d98e12
+# ╠═f44cc074-3f93-4f0a-a584-6788215c5754
+# ╠═ec4a4ae1-b201-4e1c-bbc0-16f47813240e
+# ╠═7d63ab53-1ced-4206-a030-d062721c245d
+# ╠═ff7bc968-4fb0-4e0c-9e99-25d9298a6d93
+# ╠═1969105b-a579-4f05-a7b6-4af7cb1b259e
+# ╠═98f00b68-07bd-4861-a820-8de833d15444
+# ╠═da74cf7d-42e6-495b-a336-c3b6c93236c9
 # ╠═428bb0ad-130c-41eb-a803-6f39b5003f78
-# ╠═58a545b3-a5f5-4ed6-8132-6f1384882aa6
+# ╠═3a5bf482-8a6e-40a0-a97e-94d3d65a29cb
+# ╠═4c2f6105-3cff-4e81-b727-388a4766543f
+# ╠═b02b55f8-9f0e-4b9b-ab0f-ac1ed65e8e8a
+# ╠═a3bf16ad-d330-4569-bc58-c0cdaadd187f
+# ╠═edabaac6-315c-47ea-8b08-1afd030f7a09
+# ╠═1960f63b-b570-4688-b46a-b64bc530691e
+# ╠═10951b0a-f37f-4c9a-b903-2d1c91769dbc
+# ╠═36e74bb9-0c64-4d0b-aa8a-fb8b45096601
+# ╟─1961dc92-6b90-4f5f-a3b6-f5862fa00478
+# ╟─58a545b3-a5f5-4ed6-8132-6f1384882aa6
 # ╟─f101181f-e10b-41a6-bb31-2476ac2257af
 # ╠═3b82958b-9514-483d-b4a9-61a1cf0d0800
 # ╠═df0852dd-90e5-4493-8732-85140365904a
