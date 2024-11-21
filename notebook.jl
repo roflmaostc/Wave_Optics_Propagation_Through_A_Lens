@@ -75,7 +75,7 @@ y1 = togoc(range(-25f-6, 26f-6, N1 + 1)[begin:end-1]);
 x1 = y1';
 
 # ╔═╡ ed9fce6a-416c-41a5-a3df-cbd380dee960
-z1 = reshape(togoc(range(-35f-6, 20f-6, Nz1 + 1)[begin:end-1]), 1, 1, Nz1)
+z1 = reshape(togoc(range(-35f-6, 60f-6, Nz1 + 1)[begin:end-1]), 1, 1, Nz1)
 
 # ╔═╡ 94fe19f5-dea0-48aa-9b64-e38961ea1176
 lens1 = ((0 .* x1.^2 .+ y1.^2 .+ (z1 .+ 15f-6).^2) .<= (15f-6)^2) * (n_glass .- n_air) .+ n_air;
@@ -84,7 +84,7 @@ lens1 = ((0 .* x1.^2 .+ y1.^2 .+ (z1 .+ 15f-6).^2) .<= (15f-6)^2) * (n_glass .- 
 lens2 = ((0 .* x1.^2 .+ y1.^2 .+ (z1 .+ 15f-6).^2) .<= (15f-6)^2) * (n_glass .- n_air) .+ n_air;
 
 # ╔═╡ 25c26f57-c5a4-4137-a8e2-407cbc9c7dbe
-function make_smooth_lens(_x, _y, _z, n_glass, n_air, N=50)
+function make_smooth_lens(_x, _y, _z, n_glass, n_air, N=50, radius=15f-6)
 	x = Array(_x)
 	y = Array(_y)
 	z = Array(_z)
@@ -96,23 +96,35 @@ function make_smooth_lens(_x, _y, _z, n_glass, n_air, N=50)
 	Δy = abs.(y[1] - y[2])
 	Δz = abs.(z[1] - z[2])
 
-	
+	radius_squared = radius^2
+
+	r() = rand(range(-0.5, 0.5, 1000)) 
 	Threads.@threads for iz in 1:length(z)
+		zp_s = (z[iz] + radius)^2
 		for ix in 1:length(x)
+			xp_s = x[ix]^2
 			for iy in 1:length(y)
 				counter = 0
-				for _ in 1:N
-					xp = x[ix] + rand(range(-0.5, 0.5, 1000)) * Δx
-					yp = y[iy] + rand(range(-0.5, 0.5, 1000)) * Δy
-					zp = z[iz] + rand(range(-0.5, 0.5, 1000)) * Δz
-					counter += ((0 *xp^2 + yp^2 + (zp + 15f-6)^2) <= (15f-6)^2)
+				yp_s = y[iy]^2
+				r1_squared = (xp_s + yp_s + zp_s)
+
+				if (radius - (Δx + Δy + Δz))^2 < r1_squared < (radius + (Δx + Δy + Δz))^2 
+					for _ in 1:N
+						xp1 = x[ix] + r() * Δx
+						yp1 = y[iy] + r() * Δy
+						zp1 = z[iz] + r() * Δz
+						counter += (xp1^2 + yp1^2 + (zp1 + radius)^2) <= radius_squared
+					end
+					lens[iy, ix, iz] = n_air + Float32(counter / N) * (n_glass - n_air)
+				else
+					if r1_squared > radius_squared
+						lens[iy, ix, iz] = n_air
+					else
+						lens[iy, ix, iz] = n_glass
+					end
 				end
-				#if counter > 0
-					#@show "yoha"
-				#end
-				lens[iy, ix, iz] = Float32(counter / N) * (n_glass - n_air)
+				
 			end
-			#return lens
 		end
 	end
 	return lens
@@ -155,7 +167,7 @@ heatmap(Array(z1)[:], Array(x1)[:], Array(lens1[:, N1÷2+1, :]))
 
 
 # ╔═╡ 589bf363-91b6-4381-902b-092da1e8c96e
-w1 = 50f-6
+w1 = 15f-6
 
 # ╔═╡ ddf01f2c-8b7e-459c-86c5-f01f1c6aaa3c
 beam = ComplexF32.(exp.(-(x1.^2 .+ y1.^2) ./ (w1^2)));
@@ -185,7 +197,7 @@ md"# Smooth border"
 
 
 # ╔═╡ 932df6a9-3494-4e18-9f8e-3d05a6950446
-
+(z1[2] - z1[1]) * 2π / λ * 0.5
 
 # ╔═╡ cef65203-91f6-4879-98b7-3419d1d98e12
 
@@ -194,6 +206,9 @@ md"# Smooth border"
 md"# WPM"
 
 # ╔═╡ 7d63ab53-1ced-4206-a030-d062721c245d
+
+
+# ╔═╡ 9f5993f1-b0e1-4188-bdfc-dd2ee1acb683
 
 
 # ╔═╡ 428bb0ad-130c-41eb-a803-6f39b5003f78
@@ -206,13 +221,13 @@ md"# test implementation"
 λ
 
 # ╔═╡ a3bf16ad-d330-4569-bc58-c0cdaadd187f
-beam_focus = beam .* cis.(.- (2f0 * π) / λ / 2 / 54.7f-6 .*(x1.^2 .+ y1.^2));
+beam_focus = beam .* cis.(.- (2f0 * π) / λ / 2 / 30f-6 .*(x1.^2 .+ y1.^2));
 
 # ╔═╡ edabaac6-315c-47ea-8b08-1afd030f7a09
 CUDA.@allowscalar z1[begin] - z1[end]
 
 # ╔═╡ 36e74bb9-0c64-4d0b-aa8a-fb8b45096601
-
+z1[1] + 30f-6
 
 # ╔═╡ 1961dc92-6b90-4f5f-a3b6-f5862fa00478
 md"# Utility functions"
@@ -435,7 +450,7 @@ function plan_multi_slice(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1) wh
 end
 
 # ╔═╡ 79d5496c-d9a1-442e-b69a-ffac33288ab1
-MS, H = plan_multi_slice(beam, lens1, z1[:], λ, L1, n0=1f0)
+MS, H = plan_multi_slice(beam, lens1, z1[:], λ, L1, n0=1.0f0)
 
 # ╔═╡ 71f0f949-32ec-4cb0-ae8a-5c1091d82796
 @mytime result = MS(beam);
@@ -451,14 +466,14 @@ end
 heatmap(Array(view(result, :, :, iz2) .|> abs2))
 
 # ╔═╡ 150cae90-4709-4adc-9933-d2bd073d49a2
-MS_smooth, _ = plan_multi_slice(beam, CuArray(lens_smooth), z1[:], λ, L1, n0=1f0)
+MS_smooth, _ = plan_multi_slice(beam, togoc(lens_smooth), z1[:], λ, L1, n0=1f0)
 
 # ╔═╡ 2155a928-59e5-42b5-b98c-c83133260b18
 @mytime result_smooth = MS_smooth(beam);
 
 # ╔═╡ 7b5d3741-1f0f-42f1-9aba-24d5b3630a9b
 begin
-	heatmap(Array(z1)[:], Array(x1)[:], Array(abs2.(result_smooth[:, size(result_smooth, 2)÷2 + 1, begin:end-1])).^0.5, grid=:white)
+	heatmap(Array(z1)[:], Array(x1)[:], Array(abs2.(result_smooth[:, size(result_smooth, 2)÷2 + 1, begin:end-1])).^0.3, grid=:white)
 	vline!(7.5f-6:7.5f-6, c=:white)
 	#heatmap(Array(z1)[begin:end-1], Array(x1)[:], Array(lens1[:, 257, begin:end-1]), grid=:white)
 end
@@ -472,7 +487,7 @@ beam_focused = WPM_test(beam_focus);
 # ╔═╡ 10951b0a-f37f-4c9a-b903-2d1c91769dbc
 begin
 	heatmap(Array(z1)[:], Array(x1)[:], Array(abs2.(beam_focused[:, size(beam_focused, 2)÷2 + 1, begin:end-1])).^0.5, grid=:white)
-	vline!(7.5f-6:7.5f-6, c=:white)
+	vline!(-5f-6:-5f-6, c=:white)
 	#heatmap(Array(z1)[begin:end-1], Array(x1)[:], Array(lens1[:, 257, begin:end-1]), grid=:white)
 end
 
@@ -534,7 +549,7 @@ function plan_WPM(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1, n_lens=1.5
 				field_out_cropped = crop_center(field_out, (size(field)))
 
 				# assemble field parts
-				field_history[:, :, i + 1] .= field_out_cropped[:, :, 1] .* (medium[:, :, i] .≈ n0) .+  field_out_cropped[:, :, 2] .* (medium[:, :, i] .≈ 1.5f0)
+				field_history[:, :, i + 1] .= field_out_cropped[:, :, 1] .* (medium[:, :, i] .≈ n0) .+  field_out_cropped[:, :, 2] .* (medium[:, :, i] .≈ n_lens)
 			end
 			return field_history
 		end
@@ -543,7 +558,7 @@ function plan_WPM(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1, n_lens=1.5
 end
 
 # ╔═╡ ec4a4ae1-b201-4e1c-bbc0-16f47813240e
-WPM, H2 = plan_WPM(beam, lens1, z1[:], λ, L1, n0=1f0, n_lens=1.5f0)
+WPM, H2 = plan_WPM(beam, lens1, z1[:], λ, L1, n0=1f0, n_lens=n_glass)
 
 # ╔═╡ ff7bc968-4fb0-4e0c-9e99-25d9298a6d93
 @mytime result_wpm = WPM(beam);
@@ -553,9 +568,9 @@ sum(result_wpm[:,:,1])
 
 # ╔═╡ 98f00b68-07bd-4861-a820-8de833d15444
 begin
-	heatmap(Array(z1)[:], Array(x1)[:], Array(abs2.(result_wpm[:, size(result_wpm, 2)÷2 +1, begin:end-1])).^0.9, grid=:white)
+	heatmap(Array(z1)[:], Array(x1)[:], Array(abs2.(result_wpm[:, size(result_wpm, 2)÷2 +1, begin:end-1])).^0.6, grid=:white)
 	vline!(7.5f-6:7.5f-6, c=:white)
-	heatmap(Array(lens1[:, size(result_wpm, 2)÷2 +1, begin:end-1]), grid=:white)
+	#heatmap(Array(lens1[:, size(result_wpm, 2)÷2 +1, begin:end-1]), grid=:white)
 end
 
 # ╔═╡ da74cf7d-42e6-495b-a336-c3b6c93236c9
@@ -593,9 +608,9 @@ PlutoUI = "~0.7.60"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.6"
+julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "59ba4cf6bdb932a77082475fab21d1389f9d4fb2"
+project_hash = "090c61e88bdc339ac63ad8b657508b3342d45b66"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -632,19 +647,20 @@ version = "0.8.9"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
-version = "1.1.1"
+version = "1.1.2"
 
 [[deps.ArrayInterface]]
 deps = ["Adapt", "LinearAlgebra"]
-git-tree-sha1 = "3640d077b6dafd64ceb8fd5c1ec76f7ca53bcf76"
+git-tree-sha1 = "d60a1922358aa203019b7857a2c8c37329b8736c"
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
-version = "7.16.0"
+version = "7.17.0"
 
     [deps.ArrayInterface.extensions]
     ArrayInterfaceBandedMatricesExt = "BandedMatrices"
     ArrayInterfaceBlockBandedMatricesExt = "BlockBandedMatrices"
     ArrayInterfaceCUDAExt = "CUDA"
     ArrayInterfaceCUDSSExt = "CUDSS"
+    ArrayInterfaceChainRulesCoreExt = "ChainRulesCore"
     ArrayInterfaceChainRulesExt = "ChainRules"
     ArrayInterfaceGPUArraysCoreExt = "GPUArraysCore"
     ArrayInterfaceReverseDiffExt = "ReverseDiff"
@@ -658,6 +674,7 @@ version = "7.16.0"
     CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
     CUDSS = "45b445bb-4962-46a0-9369-b4df9d0f772e"
     ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
     GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
     ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
     SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
@@ -676,6 +693,7 @@ weakdeps = ["SparseArrays"]
 
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
+version = "1.11.0"
 
 [[deps.Atomix]]
 deps = ["UnsafeAtomics"]
@@ -697,6 +715,7 @@ version = "0.5.0"
 
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+version = "1.11.0"
 
 [[deps.BitFlags]]
 git-tree-sha1 = "0691e34b3bb8be9307330f88d1a3c3f25466c24d"
@@ -756,9 +775,9 @@ version = "0.3.5"
 
 [[deps.CUDA_Runtime_jll]]
 deps = ["Artifacts", "CUDA_Driver_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
-git-tree-sha1 = "ed8a056a88f5b852df94046060f6770a57334728"
+git-tree-sha1 = "e43727b237b2879a34391eeb81887699a26f8f2f"
 uuid = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
-version = "0.15.4+0"
+version = "0.15.3+0"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
@@ -873,6 +892,7 @@ version = "1.0.0"
 [[deps.Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
+version = "1.11.0"
 
 [[deps.Dbus_jll]]
 deps = ["Artifacts", "Expat_jll", "JLLWrappers", "Libdl"]
@@ -889,6 +909,7 @@ version = "1.9.1"
 [[deps.Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+version = "1.11.0"
 
 [[deps.DocStringExtensions]]
 deps = ["LibGit2"]
@@ -962,6 +983,7 @@ version = "1.16.4"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
+version = "1.11.0"
 
 [[deps.FillArrays]]
 deps = ["LinearAlgebra"]
@@ -1011,6 +1033,7 @@ version = "1.0.14+0"
 [[deps.Future]]
 deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
+version = "1.11.0"
 
 [[deps.GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll", "libdecor_jll", "xkbcommon_jll"]
@@ -1192,6 +1215,7 @@ version = "2024.2.1+0"
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+version = "1.11.0"
 
 [[deps.IntervalSets]]
 git-tree-sha1 = "dba9ddf07f77f60450fe5d2e2beb9854d9a49bd0"
@@ -1345,6 +1369,7 @@ version = "0.16.5"
 [[deps.LazyArtifacts]]
 deps = ["Artifacts", "Pkg"]
 uuid = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
+version = "1.11.0"
 
 [[deps.LazyModules]]
 git-tree-sha1 = "a560dd966b386ac9ae60bdd3a3d3a326062d3c3e"
@@ -1359,16 +1384,17 @@ version = "0.6.4"
 [[deps.LibCURL_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
-version = "8.4.0+0"
+version = "8.6.0+0"
 
 [[deps.LibGit2]]
 deps = ["Base64", "LibGit2_jll", "NetworkOptions", "Printf", "SHA"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
+version = "1.11.0"
 
 [[deps.LibGit2_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll"]
 uuid = "e37daf67-58a4-590a-8e99-b0245dd2ffc5"
-version = "1.6.4+0"
+version = "1.7.2+0"
 
 [[deps.LibSSH2_jll]]
 deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
@@ -1377,6 +1403,7 @@ version = "1.11.0+1"
 
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+version = "1.11.0"
 
 [[deps.Libffi_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1429,6 +1456,7 @@ version = "2.40.1+0"
 [[deps.LinearAlgebra]]
 deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+version = "1.11.0"
 
 [[deps.LogExpFunctions]]
 deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
@@ -1448,6 +1476,7 @@ version = "0.3.28"
 
 [[deps.Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
+version = "1.11.0"
 
 [[deps.LoggingExtras]]
 deps = ["Dates", "Logging"]
@@ -1480,6 +1509,7 @@ version = "0.4.2"
 [[deps.Markdown]]
 deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
+version = "1.11.0"
 
 [[deps.MbedTLS]]
 deps = ["Dates", "MbedTLS_jll", "MozillaCACerts_jll", "NetworkOptions", "Random", "Sockets"]
@@ -1490,7 +1520,7 @@ version = "1.1.9"
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
-version = "2.28.2+1"
+version = "2.28.6+0"
 
 [[deps.Measures]]
 git-tree-sha1 = "c13304c81eec1ed3af7fc20e75fb6b26092a1102"
@@ -1505,6 +1535,7 @@ version = "1.2.0"
 
 [[deps.Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
+version = "1.11.0"
 
 [[deps.MosaicViews]]
 deps = ["MappedArrays", "OffsetArrays", "PaddedViews", "StackViews"]
@@ -1514,7 +1545,7 @@ version = "0.3.4"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2023.1.10"
+version = "2023.12.12"
 
 [[deps.NDTools]]
 deps = ["LinearAlgebra", "OffsetArrays", "PaddedViews", "Random", "Statistics"]
@@ -1568,7 +1599,7 @@ version = "1.3.5+1"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.23+4"
+version = "0.3.27+1"
 
 [[deps.OpenEXR]]
 deps = ["Colors", "FileIO", "OpenEXR_jll"]
@@ -1651,9 +1682,13 @@ uuid = "30392449-352a-5448-841d-b1acce4e97dc"
 version = "0.43.4+0"
 
 [[deps.Pkg]]
-deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
+deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "Random", "SHA", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.10.0"
+version = "1.11.0"
+weakdeps = ["REPL"]
+
+    [deps.Pkg.extensions]
+    REPLExt = "REPL"
 
 [[deps.PkgVersion]]
 deps = ["Pkg"]
@@ -1726,6 +1761,7 @@ version = "2.4.0"
 [[deps.Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+version = "1.11.0"
 
 [[deps.ProgressMeter]]
 deps = ["Distributed", "Printf"]
@@ -1764,12 +1800,14 @@ uuid = "e99dba38-086e-5de3-a5b1-6e4c66e897c3"
 version = "6.7.1+1"
 
 [[deps.REPL]]
-deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
+deps = ["InteractiveUtils", "Markdown", "Sockets", "StyledStrings", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+version = "1.11.0"
 
 [[deps.Random]]
 deps = ["SHA"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+version = "1.11.0"
 
 [[deps.Random123]]
 deps = ["Random", "RandomNumbers"]
@@ -1823,9 +1861,9 @@ version = "0.7.0"
 
 [[deps.SIMD]]
 deps = ["PrecompileTools"]
-git-tree-sha1 = "98ca7c29edd6fc79cd74c61accb7010a4e7aee33"
+git-tree-sha1 = "52af86e35dd1b177d051b12681e1c581f53c281b"
 uuid = "fdea26ae-647d-5447-a871-4b548cad5224"
-version = "3.6.0"
+version = "3.7.0"
 
 [[deps.Scratch]]
 deps = ["Dates"]
@@ -1841,6 +1879,7 @@ version = "1.4.7"
 
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+version = "1.11.0"
 
 [[deps.Showoff]]
 deps = ["Dates", "Grisu"]
@@ -1867,6 +1906,7 @@ version = "0.1.3"
 
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
+version = "1.11.0"
 
 [[deps.SortingAlgorithms]]
 deps = ["DataStructures"]
@@ -1877,7 +1917,7 @@ version = "1.2.1"
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-version = "1.10.0"
+version = "1.11.0"
 
 [[deps.StableRNGs]]
 deps = ["Random"]
@@ -1925,9 +1965,14 @@ uuid = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
 version = "1.4.3"
 
 [[deps.Statistics]]
-deps = ["LinearAlgebra", "SparseArrays"]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "ae3bb1eb3bba077cd276bc5cfc337cc65c3075c0"
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-version = "1.10.0"
+version = "1.11.1"
+weakdeps = ["SparseArrays"]
+
+    [deps.Statistics.extensions]
+    SparseArraysExt = ["SparseArrays"]
 
 [[deps.StatsAPI]]
 deps = ["LinearAlgebra"]
@@ -1947,10 +1992,14 @@ git-tree-sha1 = "a6b1675a536c5ad1a60e5a5153e1fee12eb146e3"
 uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
 version = "0.4.0"
 
+[[deps.StyledStrings]]
+uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
+version = "1.11.0"
+
 [[deps.SuiteSparse_jll]]
 deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
-version = "7.2.1+1"
+version = "7.7.0+0"
 
 [[deps.TOML]]
 deps = ["Dates"]
@@ -1983,6 +2032,7 @@ version = "0.1.1"
 [[deps.Test]]
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+version = "1.11.0"
 
 [[deps.TiffImages]]
 deps = ["ColorTypes", "DataStructures", "DocStringExtensions", "FileIO", "FixedPointNumbers", "IndirectArrays", "Inflate", "Mmap", "OffsetArrays", "PkgVersion", "ProgressMeter", "SIMD", "UUIDs"]
@@ -2014,9 +2064,11 @@ version = "1.5.1"
 [[deps.UUIDs]]
 deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+version = "1.11.0"
 
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
+version = "1.11.0"
 
 [[deps.UnicodeFun]]
 deps = ["REPL"]
@@ -2355,7 +2407,7 @@ version = "1.1.6+0"
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
-version = "1.52.0+1"
+version = "1.59.0+0"
 
 [[deps.oneTBB_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -2448,6 +2500,7 @@ version = "1.4.1+1"
 # ╠═ff7bc968-4fb0-4e0c-9e99-25d9298a6d93
 # ╠═1969105b-a579-4f05-a7b6-4af7cb1b259e
 # ╠═98f00b68-07bd-4861-a820-8de833d15444
+# ╠═9f5993f1-b0e1-4188-bdfc-dd2ee1acb683
 # ╠═da74cf7d-42e6-495b-a336-c3b6c93236c9
 # ╠═428bb0ad-130c-41eb-a803-6f39b5003f78
 # ╠═3a5bf482-8a6e-40a0-a97e-94d3d65a29cb
