@@ -60,7 +60,7 @@ L1 = 50f-6
 Nz1 = 256
 
 # ╔═╡ fe605fa6-b394-4531-8fff-93d7e755e8bb
-n_air = 1.0f0
+n_air = 1.5f0
 
 # ╔═╡ ca49b92f-b376-47a0-ab7b-b390eaa15bdf
 n_glass = 1.5f0
@@ -167,7 +167,7 @@ heatmap(Array(z1)[:], Array(x1)[:], Array(lens1[:, N1÷2+1, :]))
 
 
 # ╔═╡ 589bf363-91b6-4381-902b-092da1e8c96e
-w1 = 15f-6
+w1 = 0.8f-6
 
 # ╔═╡ ddf01f2c-8b7e-459c-86c5-f01f1c6aaa3c
 beam = ComplexF32.(exp.(-(x1.^2 .+ y1.^2) ./ (w1^2)));
@@ -182,7 +182,10 @@ CUDA.@allowscalar (z1[2] - z1[1]) * 2π / λ# * 0.5
 heatmap(Array(beam) .|> abs)
 
 # ╔═╡ 8d954853-9d03-459e-bd54-626c7e77c49c
+# ╠═╡ disabled = true
+#=╠═╡
 @bind iz2 PlutoUI.Slider(1:size(lens1, 3))
+  ╠═╡ =#
 
 # ╔═╡ 3a140115-81a4-491f-9f1b-9e3188c20ded
 thick_lens(n, R1, R2, D) = inv((n - 1) * (1 / R1 - 1 / R2 + (n - 1) * D /(n * R1 *R2)))
@@ -228,6 +231,30 @@ CUDA.@allowscalar z1[begin] - z1[end]
 
 # ╔═╡ 36e74bb9-0c64-4d0b-aa8a-fb8b45096601
 z1[1] + 30f-6
+
+# ╔═╡ 788901dd-7110-47f5-8b4b-b72bdab634f3
+md"# Test diffraction"
+
+# ╔═╡ cff09413-c468-4dc5-a1a4-6173f43ace0a
+z5 = reshape(togoc(range(-35f-6, 0f-6, 1025)[begin:end-1]), 1, 1, 1024)
+
+# ╔═╡ 66335b02-3a14-466d-bcff-68fcb12d14fc
+(z5[end] - z5[end-1]) * 2*π / λ
+
+# ╔═╡ 56a972e3-a5a7-40b3-941e-55f9124e6df0
+
+
+# ╔═╡ 78c50adc-c698-4f12-a6f8-203787491e2f
+
+
+# ╔═╡ bfd819bb-615c-4d01-8d71-7f789442f9da
+
+
+# ╔═╡ 03af6c39-cd62-460a-8048-339a004dd1d3
+
+
+# ╔═╡ 00cf9018-e9e3-42a4-b264-190e5e1abe99
+
 
 # ╔═╡ 1961dc92-6b90-4f5f-a3b6-f5862fa00478
 md"# Utility functions"
@@ -450,7 +477,7 @@ function plan_multi_slice(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1) wh
 end
 
 # ╔═╡ 79d5496c-d9a1-442e-b69a-ffac33288ab1
-MS, H = plan_multi_slice(beam, lens1, z1[:], λ, L1, n0=1.0f0)
+MS, H = plan_multi_slice(beam, lens1, z1[:], λ, L1, n0=n_air)
 
 # ╔═╡ 71f0f949-32ec-4cb0-ae8a-5c1091d82796
 @mytime result = MS(beam);
@@ -463,7 +490,9 @@ begin
 end
 
 # ╔═╡ f7c6afc4-46f2-4e1f-8db5-0b80574daa74
+#=╠═╡
 heatmap(Array(view(result, :, :, iz2) .|> abs2))
+  ╠═╡ =#
 
 # ╔═╡ 150cae90-4709-4adc-9933-d2bd073d49a2
 MS_smooth, _ = plan_multi_slice(beam, togoc(lens_smooth), z1[:], λ, L1, n0=1f0)
@@ -575,6 +604,75 @@ end
 
 # ╔═╡ da74cf7d-42e6-495b-a336-c3b6c93236c9
 simshow(Array(abs2.(result_wpm))[:, :, 1])
+
+# ╔═╡ 5647448d-b95a-441f-ac3d-a9d8d5824e91
+function plan_multi_slice5(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1) where CT
+
+	buffer1 = similar(beam, 2 .* size(beam)[1:2])
+	buffer2 = similar(buffer1)
+	p = plan_fft(buffer1, (1,2))
+
+	M = 2
+	L_pad = M * L
+
+
+	k = CT(2π) / λ * n0
+
+	Ns = size(beam)[1:2] .* M
+	# sample spacing
+	dx = L_pad ./ Ns
+	# frequency spacing
+	df = 1 ./ L_pad
+    # total size in frequency space
+	Lf = Ns .* df
+	# frequencies centered around first entry 
+	# 1D vectors each
+	f_y = similar(beam, real(eltype(beam)), (Ns[1], 1))
+	f_y .= fftfreq(Ns[1], Lf[1])
+	f_x = similar(beam, real(eltype(beam)), (1, Ns[2]))
+	f_x .= fftfreq(Ns[2], Lf[2])'
+
+	@show size(f_y), size(f_x)
+	CUDA.@allowscalar dz = abs(z[2] - z[1])
+
+	H = exp.(1im .* k .* abs.(dz) .* sqrt.(CT(1) .- abs2.(f_x .* λ ./ n0) .- abs2.(f_y .* λ ./ n0)))
+
+
+
+	f = let p=p, H=H, z=z, buffer1=buffer1, buffer2=buffer2, dz=dz, k=k
+		function f(field)
+			field_history = similar(field, (size(field)[1:2]..., size(medium, 3) + 1))
+			field_history[:, :, 1] .= field
+			for i in axes(medium, 3)
+				field = field_history[:, :, i]
+				field .*= @views exp.(1im .* k .* (1.5f0 - n0) .* dz)
+			    fill!(buffer2, 0)
+			    fieldp = set_center!(buffer2, field)
+			    field_imd = p * ifftshift!(buffer1, fieldp, (1, 2))
+	
+			    field_imd .*= H
+			    field_out = fftshift!(buffer2, inv(p) * field_imd, (1, 2))
+			    field_out_cropped = crop_center(field_out, size(field))
+				field_history[:, :, i + 1] .= field_out_cropped
+			end
+			return field_history
+		end
+	end
+	return f, H
+end
+
+# ╔═╡ 32ce0056-d016-4dd8-a9e6-672e0bededa9
+MS5, H5 = plan_multi_slice5(beam, lens1, z5[:], λ, L1, n0=1.5f0)
+
+# ╔═╡ f449c00d-5972-4645-92a6-33a00ec9e7fb
+@mytime result5 = MS5(beam);
+
+# ╔═╡ 2249a0b3-03a9-487e-a010-2f37801da155
+begin
+	heatmap(Array(z1)[:], Array(x1)[:], Array(abs2.(result5[:, size(result, 2)÷2 + 1, begin:end-1])).^0.5, grid=:white)
+	vline!(7.5f-6:7.5f-6, c=:white)
+	#heatmap(Array(z1)[begin:end-1], Array(x1)[:], Array(lens1[:, 257, begin:end-1]), grid=:white)
+end
 
 # ╔═╡ df0852dd-90e5-4493-8732-85140365904a
 
@@ -2511,6 +2609,18 @@ version = "1.4.1+1"
 # ╠═1960f63b-b570-4688-b46a-b64bc530691e
 # ╠═10951b0a-f37f-4c9a-b903-2d1c91769dbc
 # ╠═36e74bb9-0c64-4d0b-aa8a-fb8b45096601
+# ╠═788901dd-7110-47f5-8b4b-b72bdab634f3
+# ╠═5647448d-b95a-441f-ac3d-a9d8d5824e91
+# ╠═cff09413-c468-4dc5-a1a4-6173f43ace0a
+# ╠═66335b02-3a14-466d-bcff-68fcb12d14fc
+# ╠═32ce0056-d016-4dd8-a9e6-672e0bededa9
+# ╠═f449c00d-5972-4645-92a6-33a00ec9e7fb
+# ╠═2249a0b3-03a9-487e-a010-2f37801da155
+# ╠═56a972e3-a5a7-40b3-941e-55f9124e6df0
+# ╠═78c50adc-c698-4f12-a6f8-203787491e2f
+# ╠═bfd819bb-615c-4d01-8d71-7f789442f9da
+# ╠═03af6c39-cd62-460a-8048-339a004dd1d3
+# ╠═00cf9018-e9e3-42a4-b264-190e5e1abe99
 # ╟─1961dc92-6b90-4f5f-a3b6-f5862fa00478
 # ╟─58a545b3-a5f5-4ed6-8132-6f1384882aa6
 # ╟─f101181f-e10b-41a6-bb31-2476ac2257af
