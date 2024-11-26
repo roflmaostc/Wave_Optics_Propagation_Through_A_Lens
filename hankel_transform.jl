@@ -13,14 +13,11 @@ using Plots, FFTW, NDTools, FunctionZeros, SpecialFunctions
 # ╔═╡ ffacc05d-2bee-4849-a535-aaf437493c2a
 
 
-# ╔═╡ 03092c47-5468-4e3d-9e90-5316f440982e
-r = range(0, 3, 256)
-
-# ╔═╡ 94bbeb5a-57c0-4b71-be09-1abed661ddc5
-f1(r, γ=5) = sinc(2 * γ * r) .* (r .< 3)
-
 # ╔═╡ 5b84d92b-d8e0-433c-822f-df910d6f420f
 p = 1
+
+# ╔═╡ 12c555eb-a252-4a37-93a5-5262efd50cdd
+besselj(1, FunctionZeros.besselj_zero(1, 100))
 
 # ╔═╡ 608587ca-663a-4c88-bff0-77676380fd9f
 f2(ν, γ=5) = begin
@@ -34,56 +31,86 @@ end
 # ╔═╡ 4ac44557-696f-48d2-823e-eca334f0e5ed
 ν1 = range(0.001, 20, 100)
 
-# ╔═╡ 9bb3c18d-e614-40e3-b45f-ed4be9dec79e
-f1_arr = f1.(r)
+# ╔═╡ 2d902e4f-f815-4fa3-ac28-3b78d0397ae5
+begin
+	plot(ν1, f2.(ν1))
+end
 
 # ╔═╡ 32dbf444-629b-4626-afa7-f875c2711c98
 
 
-# ╔═╡ 52485acb-3d8a-471e-b4b8-ea6e302abbd3
-plot(f1_arr)
+# ╔═╡ 03092c47-5468-4e3d-9e90-5316f440982e
+r = range(0, 3, 256)[begin:end]
+
+# ╔═╡ c27a3c7b-c13c-4722-8eea-2fbacf9e262f
+r2 = range(0, 20, 100)
+
+# ╔═╡ 9411be9f-19e5-48a8-bee5-87c76ffd9093
+begin
+	plot(r2 .* 10, besselj.(1, r2 .* 10))
+	scatter!((besselj_zero(1, 60 - 6), 0))
+end
 
 # ╔═╡ ff073097-379c-4114-b3ae-fe1901c5cd7a
-
+besselj_zero(1, 1)
 
 # ╔═╡ 467091fc-59c9-4404-96a2-27a3228d34ab
-function qdht(array, p, R)
-	fz = FunctionZeros.besselj_zero
-	N = length(array)
-	ᾱ = [fz(p, i) for i in 1:N]
-	α_N_plus_1 = fz(p, N + 1) 
-	
-	r̄ = ᾱ .* (R / α_N_plus_1)
-	ν̄ = ᾱ ./ (2π * R)
-	
+function qdht(f, p, R, N)
+	@show "hi"
+	α(p, k) = FunctionZeros.besselj_zero(p, k)
+	ᾱ = [α(p, i) for i in 1:N]
+	α_N_plus_1 = α(p, N+1) 
 	V = α_N_plus_1/ (2π * R)
 
-	α(p, k) = fz(p, k)
-	S = α(p, N+1)
-	T = [2 * besselj(p, α(p, n) * α(p, m) / S) / (abs(besselj(p + 1, α(p, n)) * abs(besselj(p + 1, α(p, m)))) * S) for m in 1:N, n in 1:N]
+	
+	r̄ = ᾱ .* R / α_N_plus_1#/ (2π * V)
+	#@show r̄
+	r̄ = ᾱ ./ (2π * V)
+	#@show r̄
+	
+	array = f.(r̄)
+	ν̄ = ᾱ ./ (2π * R)
+	
 
-	J̄ = abs.(besseljx.(p + 1, ᾱ)) ./ R
+	S = α(p, N + 1)
+	@show S, 2π*R*V
 
-	@show V
+
+	T = [2 * besselj(p, ᾱ[m] * ᾱ[n] / S) / (abs(besselj(p + 1, ᾱ[n])) * abs(besselj(p + 1, ᾱ[m])) * S) for m in 1:N, n in 1:N]
+	@show size(T)
+	
+	J̄ = abs.(besselj.(p + 1, ᾱ)) ./ R#(α_N_plus_1 / (2π * V))
+
+	print(V)
 	return ν̄, T * (array ./ J̄), T
 end
 
-# ╔═╡ 967633b3-d5af-43dd-87c3-8c12c6b81621
-FunctionZeros.besselj_zero_asymptotic(1, 2)
+# ╔═╡ 94bbeb5a-57c0-4b71-be09-1abed661ddc5
+f1(r, γ=5) = sinc(2 * γ * r) .* (r .<= 3) #r > 3 ? 0.1 / r^2 : sinc(2 * γ * r)# .* (r .> 3)
+
+# ╔═╡ 9bb3c18d-e614-40e3-b45f-ed4be9dec79e
+f1_arr = f1.(r)
+
+# ╔═╡ 52485acb-3d8a-471e-b4b8-ea6e302abbd3
+plot(r, f1_arr)
+
+# ╔═╡ dd8344fa-eb58-4a70-b6dd-a5ce3ca166a2
+plot(f1_arr)
 
 # ╔═╡ 500baf9f-2f97-4d09-8b16-c3c763e5764c
-@time ν, f1_arr_transformed, T = qdht(f1_arr, 1, 3)
+@time ν, f1_arr_transformed, T = qdht(f1, 1, 3, 256)
 
-# ╔═╡ 2d902e4f-f815-4fa3-ac28-3b78d0397ae5
-begin
-	plot(ν, f2.(ν))
-end
+# ╔═╡ 423d603b-d512-4017-9ce3-8987e30dea81
+heatmap(T  * T')
 
 # ╔═╡ 2e282e43-7a75-47bd-876a-deb95676202c
 begin
 	plot(ν, f1_arr_transformed)
-	plot!(ν1, f2.(ν1))
+	plot!(ν, f2.(ν) .* 440)
 end
+
+# ╔═╡ 4ee46a34-d570-45eb-990f-ef387604eabc
+@show "lol"
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1406,19 +1433,24 @@ version = "1.4.1+1"
 # ╠═30ab7680-ab6d-11ef-0fe5-21fab952e734
 # ╠═7cd92975-995c-46b5-aff5-0164f459a9ab
 # ╠═ffacc05d-2bee-4849-a535-aaf437493c2a
-# ╠═03092c47-5468-4e3d-9e90-5316f440982e
-# ╠═94bbeb5a-57c0-4b71-be09-1abed661ddc5
 # ╠═5b84d92b-d8e0-433c-822f-df910d6f420f
+# ╠═12c555eb-a252-4a37-93a5-5262efd50cdd
 # ╠═608587ca-663a-4c88-bff0-77676380fd9f
 # ╠═4ac44557-696f-48d2-823e-eca334f0e5ed
 # ╠═2d902e4f-f815-4fa3-ac28-3b78d0397ae5
 # ╠═9bb3c18d-e614-40e3-b45f-ed4be9dec79e
 # ╠═32dbf444-629b-4626-afa7-f875c2711c98
+# ╠═03092c47-5468-4e3d-9e90-5316f440982e
 # ╠═52485acb-3d8a-471e-b4b8-ea6e302abbd3
+# ╠═9411be9f-19e5-48a8-bee5-87c76ffd9093
+# ╠═c27a3c7b-c13c-4722-8eea-2fbacf9e262f
 # ╠═ff073097-379c-4114-b3ae-fe1901c5cd7a
+# ╠═dd8344fa-eb58-4a70-b6dd-a5ce3ca166a2
 # ╠═467091fc-59c9-4404-96a2-27a3228d34ab
-# ╠═967633b3-d5af-43dd-87c3-8c12c6b81621
+# ╠═94bbeb5a-57c0-4b71-be09-1abed661ddc5
 # ╠═500baf9f-2f97-4d09-8b16-c3c763e5764c
+# ╠═423d603b-d512-4017-9ce3-8987e30dea81
 # ╠═2e282e43-7a75-47bd-876a-deb95676202c
+# ╠═4ee46a34-d570-45eb-990f-ef387604eabc
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
