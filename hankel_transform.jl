@@ -75,14 +75,20 @@ function qdht(f, p, R, N)
 	S = α(p, N + 1)
 	@show S, 2π*R*V
 
-
+	@show "max_radius", α_N_plus_1 / (2 * pi * V)
+	
 	T = [2 * besselj(p, ᾱ[m] * ᾱ[n] / S) / (abs(besselj(p + 1, ᾱ[n])) * abs(besselj(p + 1, ᾱ[m])) * S) for m in 1:N, n in 1:N]
 	@show size(T)
 	
 	J̄ = abs.(besselj.(p + 1, ᾱ)) ./ R#(α_N_plus_1 / (2π * V))
+	jp1 = abs.(besselj.(p + 1, ᾱ))
+	jr = jp1 ./ R
+	jv = jp1 ./ V
 
+	
 	print(V)
-	return ν̄, T * (array ./ J̄), T
+	#return ν̄, T * (array ./ J̄), T
+	return ν̄, jv .* (T * (array ./ jr)), T
 end
 
 # ╔═╡ 94bbeb5a-57c0-4b71-be09-1abed661ddc5
@@ -106,11 +112,17 @@ heatmap(T  * T')
 # ╔═╡ 2e282e43-7a75-47bd-876a-deb95676202c
 begin
 	plot(ν, f1_arr_transformed)
-	plot!(ν, f2.(ν) .* 440)
+	scatter!(ν, f2.(ν))
 end
 
 # ╔═╡ 4ee46a34-d570-45eb-990f-ef387604eabc
 @show "lol"
+
+# ╔═╡ ee0a9731-e5cc-442f-baea-19d786a122e0
+FunctionZeros.besselj_zero(5, 2)
+
+# ╔═╡ ff0172af-c4e5-4bbd-b9ef-92edefeb0223
+besselj(1, 1.1)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1452,5 +1464,7 @@ version = "1.4.1+1"
 # ╠═423d603b-d512-4017-9ce3-8987e30dea81
 # ╠═2e282e43-7a75-47bd-876a-deb95676202c
 # ╠═4ee46a34-d570-45eb-990f-ef387604eabc
+# ╠═ee0a9731-e5cc-442f-baea-19d786a122e0
+# ╠═ff0172af-c4e5-4bbd-b9ef-92edefeb0223
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
