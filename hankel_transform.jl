@@ -56,7 +56,6 @@ besselj_zero(1, 1)
 
 # ╔═╡ 467091fc-59c9-4404-96a2-27a3228d34ab
 function qdht(f, p, R, N)
-	@show "hi2"
 	α(p, k) = FunctionZeros.besselj_zero(p, k)
 	ᾱ = [α(p, i) for i in 1:N]
 	α_N_plus_1 = α(p, N+1) 
@@ -91,12 +90,88 @@ function qdht(f, p, R, N)
 		return a
 	end
 
+	
+	function fwd_arr(array)
+		a = jv .* (T * (array ./ jr))
+		return a
+	end
+
 	function bwd(arr)
 		b = jr .* (T * (arr ./ jv))
 	end
 	
-	return ν̄, r̄, fwd, bwd
+	return ν̄, r̄, fwd, fwd_arr, bwd
 end
+
+# ╔═╡ da384d4d-88cc-433a-a598-7107efc07d67
+function radial_prop(f_input, z, λ, L; N=256)
+	ν̄, r̄, fwd_f, fwd, bwd = qdht(f_input, 0, L, N)
+
+	Δz = abs(z[2] - z[1])
+	_f(ν) = exp(1im * 2π * Δz * sqrt(1 / λ^2 - ν^2))
+	prop = _f.(ν̄)
+
+
+	output = zeros(ComplexF64, (N, length(z) + 1))
+	output[:, 1] = f_input.(r̄)
+
+	for i in 2:length(z) + 1
+		field = output[:, i - 1]
+		output[:, i] .= bwd(prop .* fwd(field))
+	end
+
+	return output, r̄
+end
+
+# ╔═╡ d803d41a-6372-4c8b-bbda-a260383a9e3c
+function gaussian_beam(r, λ, w0, z)
+    # Constants
+    
+    # Derived Parameters
+    z_R = π * w0^2 / λ  # Rayleigh range
+    k = 2π / λ  # Wavenumber
+
+    # Beam radius (w(z))
+    w = w0 * sqrt(1 + (z / z_R)^2)
+    
+    # Radius of curvature (R(z))
+    R = z == 0 ? Inf : z * (1 + (z_R / z)^2)
+    
+    # Gouy phase (ξ(z))
+    ψ = atan(z / z_R)
+    
+    # Intensity profile at given r and z
+    intensity = (w0 / w) * exp(-r^2 / w^2) * exp(-1im *(k * z + k * r^2 / 2 / R - ψ))
+
+    return intensity
+end
+
+# ╔═╡ a057b356-38c6-4d5a-b2fb-b2e43e203e46
+z_gauss = range(0, 400e-6, 500)
+
+# ╔═╡ 8b5d3dbd-433c-40a5-ac3e-48997f1a0709
+gb_propagated, r_gauss = radial_prop(x -> gaussian_beam(x, 633e-9, 5e-6, 0), z_gauss, 633e-9, 100e-6)
+
+# ╔═╡ de88c654-7ad5-4f03-b240-510fa2794588
+heatmap(z_gauss, r_gauss, abs2.(gb_propagated[:, 2:end]).^0.2)
+
+# ╔═╡ d1055a4e-32aa-49fe-89c8-0613f353868a
+heatmap(z_gauss, r_gauss, abs2.(gaussian_beam.(r_gauss, 633e-9, 5e-6, z_gauss')).^0.2)
+
+# ╔═╡ 22a8321c-ae2f-4834-91eb-e09840fd0ffd
+sum(gb_propagated[:, end-1])
+
+# ╔═╡ 9a5294d7-ec31-4ec1-ae70-5159e28bbcd5
+begin
+	plot(range(0, 100e-6, 100), abs2.(gaussian_beam.(range(0, 100e-6, 100), 633e-9, 5e-6, z_gauss[end - 100])))
+	plot!(r_gauss, abs2.(gb_propagated[:, end - 100]))
+end
+
+# ╔═╡ a9a41b57-433e-4d0a-94b6-47273903f3d5
+
+
+# ╔═╡ 8ded1dc6-5d9c-4dc4-b115-43f83e06071c
+
 
 # ╔═╡ 94bbeb5a-57c0-4b71-be09-1abed661ddc5
 f1(r, γ=5) = sinc(2 * γ * r) .* (r .<= 3) #r > 3 ? 0.1 / r^2 : sinc(2 * γ * r)# .* (r .> 3)
@@ -111,7 +186,7 @@ plot(r, f1_arr)
 plot(f1_arr)
 
 # ╔═╡ 500baf9f-2f97-4d09-8b16-c3c763e5764c
-@time ν, r̄, fwd, bwd = qdht(f1, 1, 3, 256)
+@time ν, r̄, fwd, _, bwd = qdht(f1, 1, 3, 256)
 
 # ╔═╡ 176befe1-adc3-4fa2-a9c9-8bf09ed7888c
 begin
@@ -1481,6 +1556,16 @@ version = "1.4.1+1"
 # ╠═ff073097-379c-4114-b3ae-fe1901c5cd7a
 # ╠═dd8344fa-eb58-4a70-b6dd-a5ce3ca166a2
 # ╠═467091fc-59c9-4404-96a2-27a3228d34ab
+# ╠═da384d4d-88cc-433a-a598-7107efc07d67
+# ╠═d803d41a-6372-4c8b-bbda-a260383a9e3c
+# ╠═a057b356-38c6-4d5a-b2fb-b2e43e203e46
+# ╠═8b5d3dbd-433c-40a5-ac3e-48997f1a0709
+# ╠═de88c654-7ad5-4f03-b240-510fa2794588
+# ╠═d1055a4e-32aa-49fe-89c8-0613f353868a
+# ╠═22a8321c-ae2f-4834-91eb-e09840fd0ffd
+# ╠═9a5294d7-ec31-4ec1-ae70-5159e28bbcd5
+# ╠═a9a41b57-433e-4d0a-94b6-47273903f3d5
+# ╠═8ded1dc6-5d9c-4dc4-b115-43f83e06071c
 # ╠═94bbeb5a-57c0-4b71-be09-1abed661ddc5
 # ╠═500baf9f-2f97-4d09-8b16-c3c763e5764c
 # ╠═176befe1-adc3-4fa2-a9c9-8bf09ed7888c
