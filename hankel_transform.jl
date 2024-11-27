@@ -56,39 +56,46 @@ besselj_zero(1, 1)
 
 # ╔═╡ 467091fc-59c9-4404-96a2-27a3228d34ab
 function qdht(f, p, R, N)
-	@show "hi"
+	@show "hi2"
 	α(p, k) = FunctionZeros.besselj_zero(p, k)
 	ᾱ = [α(p, i) for i in 1:N]
 	α_N_plus_1 = α(p, N+1) 
 	V = α_N_plus_1/ (2π * R)
-
 	
-	r̄ = ᾱ .* R / α_N_plus_1#/ (2π * V)
-	#@show r̄
 	r̄ = ᾱ ./ (2π * V)
-	#@show r̄
 	
-	array = f.(r̄)
+	
 	ν̄ = ᾱ ./ (2π * R)
 	
 
 	S = α(p, N + 1)
-	@show S, 2π*R*V
 
-	@show "max_radius", α_N_plus_1 / (2 * pi * V)
+	T = zeros((N, N))
+
+	for m in 1:N
+		for n in m:N
+			T[m, n] = 2 * besselj(p, ᾱ[m] * ᾱ[n] / S) / (abs(besselj(p + 1, ᾱ[n])) * abs(besselj(p + 1, ᾱ[m])) * S)
+			T[n, m] = T[m, n]
+		end
+	end
+	#@time T = [2 * besselj(p, ᾱ[m] * ᾱ[n] / S) / (abs(besselj(p + 1, ᾱ[n])) * abs(besselj(p + 1, ᾱ[m])) * S) for m in 1:N, n in 1:N]
 	
-	T = [2 * besselj(p, ᾱ[m] * ᾱ[n] / S) / (abs(besselj(p + 1, ᾱ[n])) * abs(besselj(p + 1, ᾱ[m])) * S) for m in 1:N, n in 1:N]
-	@show size(T)
-	
-	J̄ = abs.(besselj.(p + 1, ᾱ)) ./ R#(α_N_plus_1 / (2π * V))
+	J̄ = abs.(besselj.(p + 1, ᾱ)) ./ R
 	jp1 = abs.(besselj.(p + 1, ᾱ))
 	jr = jp1 ./ R
 	jv = jp1 ./ V
 
+	function fwd(f)
+		array = f.(r̄)
+		a = jv .* (T * (array ./ jr))
+		return a
+	end
+
+	function bwd(arr)
+		b = jr .* (T * (arr ./ jv))
+	end
 	
-	print(V)
-	#return ν̄, T * (array ./ J̄), T
-	return ν̄, jv .* (T * (array ./ jr)), T
+	return ν̄, r̄, fwd, bwd
 end
 
 # ╔═╡ 94bbeb5a-57c0-4b71-be09-1abed661ddc5
@@ -104,16 +111,31 @@ plot(r, f1_arr)
 plot(f1_arr)
 
 # ╔═╡ 500baf9f-2f97-4d09-8b16-c3c763e5764c
-@time ν, f1_arr_transformed, T = qdht(f1, 1, 3, 256)
+@time ν, r̄, fwd, bwd = qdht(f1, 1, 3, 256)
 
-# ╔═╡ 423d603b-d512-4017-9ce3-8987e30dea81
-heatmap(T  * T')
+# ╔═╡ 176befe1-adc3-4fa2-a9c9-8bf09ed7888c
+begin
+	plot(r̄, bwd(fwd(f1)))
+	scatter!(r̄, f1.(r̄))
+end
+
+# ╔═╡ d702c517-43e2-432c-8368-a7f9d746aaae
+r̄
+
+# ╔═╡ 9b11aed3-8a5f-4fd1-b407-962d204ce807
+r̄[2] - r̄[1]
+
+# ╔═╡ 2fbeb594-5ba6-4a5f-b2a5-904c996cf0c8
+r̄[128] - r̄[127]
 
 # ╔═╡ 2e282e43-7a75-47bd-876a-deb95676202c
 begin
-	plot(ν, f1_arr_transformed)
+	plot(ν, fwd(f1))
 	scatter!(ν, f2.(ν))
 end
+
+# ╔═╡ 3584118c-05f9-4265-a2d3-98d12bee9775
+
 
 # ╔═╡ 4ee46a34-d570-45eb-990f-ef387604eabc
 @show "lol"
@@ -1461,8 +1483,12 @@ version = "1.4.1+1"
 # ╠═467091fc-59c9-4404-96a2-27a3228d34ab
 # ╠═94bbeb5a-57c0-4b71-be09-1abed661ddc5
 # ╠═500baf9f-2f97-4d09-8b16-c3c763e5764c
-# ╠═423d603b-d512-4017-9ce3-8987e30dea81
+# ╠═176befe1-adc3-4fa2-a9c9-8bf09ed7888c
+# ╠═d702c517-43e2-432c-8368-a7f9d746aaae
+# ╠═9b11aed3-8a5f-4fd1-b407-962d204ce807
+# ╠═2fbeb594-5ba6-4a5f-b2a5-904c996cf0c8
 # ╠═2e282e43-7a75-47bd-876a-deb95676202c
+# ╠═3584118c-05f9-4265-a2d3-98d12bee9775
 # ╠═4ee46a34-d570-45eb-990f-ef387604eabc
 # ╠═ee0a9731-e5cc-442f-baea-19d786a122e0
 # ╠═ff0172af-c4e5-4bbd-b9ef-92edefeb0223
