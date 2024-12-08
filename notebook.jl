@@ -53,14 +53,103 @@ togoc(x) = use_CUDA[] ? CuArray(x) : x
 # ╔═╡ 6ce9a70c-0162-480a-9177-2715ff2f963a
 ImageShow.simshow(x::CuArray, kwargs...) = simshow(Array(x), kwargs...) 
 
+# ╔═╡ 57387f24-15a4-4ea8-867e-e7d524c310b4
+
+
+# ╔═╡ d09a7268-e3f6-4ced-8cca-24b718895c19
+md"""
+# 1. Angular Spectrum Propagation
+
+It is a convolutional operation.\\
+It propagates a field with size $L$ over a distance $z$.\\
+The output field size is $L$.
+
+$$\psi_{z}=\mathcal{F}^{-1}\left[\mathcal{F}\left[\psi_{0}\right] \cdot H_{\textrm{AS}}\right],$$
+
+$$H_{\textrm{AS}}\left(f_{x},f_{y}\right)=\exp\left(i2\pi z\sqrt{\frac{n^2}{\lambda^{2}}-f_{x}^{2}-f_{y}^{2}}\right)$$
+
+
+The different variables $\psi_0$ input field, $f_x = \frac{k_x}{2\pi}$ spatial frequency, $\mathcal F$ Fourier Transform, $n$ refractive index in medium.
+
+
+It is a solution to the homogenous Helmholtz equation in an isotropic medium.
+
+
+# 2. Thin Element Approximation
+If an optical field propagate through a medium with non-uniform refractive index, its effect on the beam can described as a multiplication.
+
+For example, a thin lens with focal length $f$ has a refractive index profile of:
+
+$$T_L(x,y) = \exp\left(- \frac{i\cdot k}{2\cdot f}\cdot (x^2 + y^2) \right)$$
+
+So the electrical field directly after the lens $U_{+}(x,y)$ is simply:
+
+$$U_{+}(x,y) = T_L(x,y) \cdot (U_{-}(x,y))$$
+
+
+
+# 3. Multi Slice Propagation
+So now we can apply this idea to a thicker volume by slicing the volume and apply the thin element approximation to each slice.
+Between the slics we use free space propagation.
+
+
+## Systematic Error of the Multi Slice Approach
+
+The following Gedankenexperiment.
+Let's assume we propagate a Gaussian beam in a medium with refractive index $n=1.1$.
+So we slice the homogenous medium in thin slices with a $\Delta n = 0.1$.
+In each step we propapate with the angular spectrum to the next slice. At each slice we multiply the phase by $\exp(i \cdot k \cdot \Delta z \cdot \Delta n). However, this will just do a global phase shift (a constant number), hence we can omit this skip.
+What we obtain at the end, is just a beam propagated in vacuum and not in $n=1.1$ since at each multi-slice step the phase factor was constant.
+Of course this solution is wrong, since the correct propagation kernel would have been the one with $k=\frac{2\pi}{\lambda} \cdot 1.1$ and not $k=\frac{2\pi}{\lambda}$. So independent of the size of $\Delta z$, the multi-slice approach will fail.
+
+
+
+# 4. Hankel Transform
+!!! warn "Reference"
+	Manuel Guizar-Sicairos and Julio C. Gutiérrez-Vega, \"Computation of quasi-discrete Hankel transforms of integer order for propagating optical wave fields,\" J. Opt. Soc. Am. A 21, 53-58 (2004) 
+
+Let's recall that the Fourier transform can be written as
+
+$$\mathcal{F}[f](k_x, k_y) = \int_{-\infty}^{\infty} F(x,y) \exp(i (k_x \cdot x + k_y \cdot y)) \,\mathrm{d}x\, \mathrm{d}y$$
+
+If we transform this do polar coordinates $(r, \theta)$ we obtain
+
+$$\mathcal{F}[f](\kappa, \phi) = \int_{0}^{\infty} \int_{0}^{2\pi} r f(r, \theta)\cdot \exp(i \cdot \cos(\theta - \phi) \kappa r)  \,\mathrm{d}\theta\, \mathrm{d}r$$
+
+where $\kappa = \sqrt{k_x^2 + k_y^2}$ and $r=\sqrt{x^2 + y^2}$
+
+
+
+# 5. Computational Complexities
+
+## Multi Slice
+If we have a field with $N \times N$ pixels, then the Angular Spectrum evalulates at a cost of two FFT transforms, which corresponds to $N^2 \cdot \log N$. But since we propagate $N_z$ steps, the total cost is $N_z \cdot N^2 \cdot \log N$.
+The total memory cost is $N^2 \cdot N_z$
+
+## Hankel Transform
+The Hankel transform reduces this 2D field to a 1D field with only size $N_r$.
+To propagate to another plane, we need two fast Hankel transform which evaluate each a matrix product. The total price for this is $N_r^2$. Since we do $N_z$ steps, we obtain $N_r^2 \cdot N_z$. The total memory cost is only $N_r \cdot N_z$.
+
+## References
+- J. M. Cowley and A. F. Moodie, “The Scattering of Electrons by Atoms and Crystals. I. A New Theoretical Approach,” Acta Cryst. 10 (1957)
+- K. Li, M. Wojcik, and C. Jacobsen, “Multislice does it all—calculating the performance of nanofocusing X-ray optics,” Opt. Express 25, 1831 (2017)}
+
+"""
+
+# ╔═╡ 8566808d-45d7-473b-8484-9aa1dc511762
+
+
+# ╔═╡ cbdda2ca-9a5b-40a8-beae-d5b50b260104
+
+
 # ╔═╡ 209d08ae-168e-48e0-a4b7-6f842c291a73
-md"# 1. Generate a Ball lens"
+md"## 1. Generate a Ball lens"
 
 # ╔═╡ 1397b1f7-599b-4df5-ad4d-8f626e527a26
 N1 = 512
 
 # ╔═╡ 97f4e89f-b946-41a8-bfa8-b5325580e143
-L1 = 20f-6
+L1 = 60f-6
 
 # ╔═╡ bdae79e7-5976-4a2e-b3da-be809d8de95f
 Nz1 = 256
@@ -102,7 +191,7 @@ At the voxels which lie on the intersection of air and lens, we integrate in a M
 * `radius` is the lens radius
 * `offset` is the `z` center offset of the lens
 """
-function make_smooth_lens(_x, _y, _z, n_glass, n_air, N=50, radius=8f-6, offset=8f-6)
+function make_smooth_lens(_x, _y, _z, n_glass, n_air, N=50, radius=15f-6, offset=15f-6)
 	x = Array(_x)
 	y = Array(_y)
 	z = Array(_z)
@@ -170,13 +259,13 @@ md"# 2. Implementation of the Propagation Methods"
 md"# 3. Experimental Results with Gaussian Beam"
 
 # ╔═╡ 589bf363-91b6-4381-902b-092da1e8c96e
-w1 = 8f-6
+w1 = 15f-6
 
 # ╔═╡ ddf01f2c-8b7e-459c-86c5-f01f1c6aaa3c
 beam = ComplexF32.(exp.(-(x1.^2 .+ y1.^2) ./ (w1^2)));
 
 # ╔═╡ 36537308-0263-4555-9096-a90786849554
-λ = 633f-9 * 5
+λ = 633f-9
 
 # ╔═╡ 0537bafa-e13d-4ff1-92bc-6bbc35baa5d2
 heatmap(Array(beam) .|> abs)
@@ -372,23 +461,11 @@ end
 # ╔═╡ 9a6c1794-9963-4c85-bcf0-77b16f98a52a
 z_gauss = range(-40f-6, 30f-6, 1000);
 
-# ╔═╡ 84aa0933-1e48-4bb4-91b6-1f651ea68efc
-z_gauss'
-
 # ╔═╡ b3e0efeb-1a69-4249-813c-0abaf87e94c5
 gb_propagated, r_gauss = radial_prop(x -> gaussian_beam(x, 633f-9, 10f-6, 0), z_gauss, 633f-9, 30f-6, lens_function; N=1024)
 
-# ╔═╡ e94bb4a0-96bc-4803-b12d-e616926eea24
-heatmap(lens_function.(r_gauss, z_gauss'))
-
 # ╔═╡ b7793022-ee9b-4883-9870-c8aef2e82e49
 heatmap(z_gauss, [.- reverse(r_gauss); r_gauss], abs2.([reverse(gb_propagated[:, 2:end], dims=1); gb_propagated[:, 2:end]]).^0.2)
-
-# ╔═╡ 3d5a1d34-7d31-403d-8ab6-024693a1f584
-size(r_gauss)
-
-# ╔═╡ bfd819bb-615c-4d01-8d71-7f789442f9da
-size(z_gauss)
 
 # ╔═╡ 03af6c39-cd62-460a-8048-339a004dd1d3
 
@@ -2795,7 +2872,11 @@ version = "1.4.1+1"
 # ╠═f4fa6dab-d64f-46be-9f13-6cccbf50400a
 # ╠═00b13143-d9bd-402f-858c-0270a012a61f
 # ╠═6ce9a70c-0162-480a-9177-2715ff2f963a
-# ╟─209d08ae-168e-48e0-a4b7-6f842c291a73
+# ╠═57387f24-15a4-4ea8-867e-e7d524c310b4
+# ╠═d09a7268-e3f6-4ced-8cca-24b718895c19
+# ╠═8566808d-45d7-473b-8484-9aa1dc511762
+# ╠═cbdda2ca-9a5b-40a8-beae-d5b50b260104
+# ╠═209d08ae-168e-48e0-a4b7-6f842c291a73
 # ╠═1397b1f7-599b-4df5-ad4d-8f626e527a26
 # ╠═97f4e89f-b946-41a8-bfa8-b5325580e143
 # ╠═bdae79e7-5976-4a2e-b3da-be809d8de95f
@@ -2873,12 +2954,8 @@ version = "1.4.1+1"
 # ╠═c165b464-b470-4e03-bdb1-05b70a24e9b9
 # ╠═e8e428cc-2f7b-4bda-8a03-845631f55c43
 # ╠═9a6c1794-9963-4c85-bcf0-77b16f98a52a
-# ╠═e94bb4a0-96bc-4803-b12d-e616926eea24
-# ╠═84aa0933-1e48-4bb4-91b6-1f651ea68efc
 # ╠═b3e0efeb-1a69-4249-813c-0abaf87e94c5
 # ╠═b7793022-ee9b-4883-9870-c8aef2e82e49
-# ╠═3d5a1d34-7d31-403d-8ab6-024693a1f584
-# ╠═bfd819bb-615c-4d01-8d71-7f789442f9da
 # ╠═03af6c39-cd62-460a-8048-339a004dd1d3
 # ╠═00cf9018-e9e3-42a4-b264-190e5e1abe99
 # ╟─1961dc92-6b90-4f5f-a3b6-f5862fa00478
