@@ -98,7 +98,7 @@ Between the slics we use free space propagation.
 The following Gedankenexperiment.
 Let's assume we propagate a Gaussian beam in a medium with refractive index $n=1.1$.
 So we slice the homogenous medium in thin slices with a $\Delta n = 0.1$.
-In each step we propapate with the angular spectrum to the next slice. At each slice we multiply the phase by $\exp(i \cdot k \cdot \Delta z \cdot \Delta n). However, this will just do a global phase shift (a constant number), hence we can omit this skip.
+In each step we propapate with the angular spectrum to the next slice. At each slice we multiply the phase by $\exp(i \cdot k \cdot \Delta z \cdot \Delta n)$. However, this will just do a global phase shift (a constant number), hence we can omit this skip.
 What we obtain at the end, is just a beam propagated in vacuum and not in $n=1.1$ since at each multi-slice step the phase factor was constant.
 Of course this solution is wrong, since the correct propagation kernel would have been the one with $k=\frac{2\pi}{\lambda} \cdot 1.1$ and not $k=\frac{2\pi}{\lambda}$. So independent of the size of $\Delta z$, the multi-slice approach will fail.
 
@@ -110,15 +110,26 @@ Of course this solution is wrong, since the correct propagation kernel would hav
 
 Let's recall that the Fourier transform can be written as
 
-$$\mathcal{F}[f](k_x, k_y) = \int_{-\infty}^{\infty} F(x,y) \exp(i (k_x \cdot x + k_y \cdot y)) \,\mathrm{d}x\, \mathrm{d}y$$
+$$\mathcal{F}[f](k_x, k_y) = \int_{-\infty}^{\infty} F(x,y) \exp(i (k_x \cdot x + k_y \cdot y)) \,\mathrm{d}x\, \mathrm{d}y = \int_{-\infty}^{\infty} F(x,y) \exp(i \vec k \cdot \vec r) \,\mathrm{d}x\, \mathrm{d}y$$
 
-If we transform this do polar coordinates $(r, \theta)$ we obtain
+If we transform this do polar coordinates $(r, \theta)$ and $(\kappa, \phi)$ we obtain
 
 $$\mathcal{F}[f](\kappa, \phi) = \int_{0}^{\infty} \int_{0}^{2\pi} r f(r, \theta)\cdot \exp(i \cdot \cos(\theta - \phi) \kappa r)  \,\mathrm{d}\theta\, \mathrm{d}r$$
 
 where $\kappa = \sqrt{k_x^2 + k_y^2}$ and $r=\sqrt{x^2 + y^2}$
 
+We can replace with
 
+$$\exp(i x \cdot \sin(\theta)) = \sum_{n=-\infty}^{\infty} J_n(x) \cdot \exp(i n \theta)$$
+where $J_n$ is the nth-order Bessel function of the first kind.
+
+After integration over $\theta$, it only remains if $f$ has no $\theta$ dependency
+
+$$\mathcal{F}[f](\kappa, \phi) = 2\pi \int_{0}^{\infty} r \cdot f(r) \cdot J_0(\kappa \cdot r) \, \mathrm{d}r = \mathcal{H}[f](\rho)$$
+
+where $\mathcal{H}$ is the Hankel transform.
+
+This allows us to calculate the Fourier transform for the 2D case with the Fast Hankel transform in 1D. After the propagation, we can remap the cylindrical coordinates back to cartesian coordinates.
 
 # 5. Computational Complexities
 
@@ -133,6 +144,7 @@ To propagate to another plane, we need two fast Hankel transform which evaluate 
 ## References
 - J. M. Cowley and A. F. Moodie, “The Scattering of Electrons by Atoms and Crystals. I. A New Theoretical Approach,” Acta Cryst. 10 (1957)
 - K. Li, M. Wojcik, and C. Jacobsen, “Multislice does it all—calculating the performance of nanofocusing X-ray optics,” Opt. Express 25, 1831 (2017)}
+* Timothy M. Pritchett, Fast Hankel Transform Algorithms for Optical Beam Propagation, December 2001
 
 """
 
