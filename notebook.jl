@@ -17,12 +17,15 @@ macro bind(def, element)
 end
 
 # ╔═╡ 7112c7f2-a35a-11ef-0005-b77b37b5bb2c
-using ImageShow, ImageIO, Plots, FFTW, CUDA,NDTools, PlutoUI, IndexFunArrays, EllipsisNotation,  FunctionZeros, SpecialFunctions
+using ImageShow, ImageIO, Plots, FFTW, CUDA,NDTools, PlutoUI, IndexFunArrays, EllipsisNotation,  FunctionZeros, SpecialFunctions, FileIO
 
 # ╔═╡ 1bc50357-ec6a-404a-a2b9-b8d31b153475
 md"# 0. Load packages
 On the first run, Julia is going to install some packages automatically. So start this notebook and give it some minutes (5-10min) to install all packages. 
 No worries, any future runs will be much faster to start!
+
+
+However, the simulations take quite some minutes, so don't be impatient :)
 "
 
 # ╔═╡ e0ad01cc-622d-4505-ba8b-29b504f92300
@@ -37,21 +40,14 @@ TableOfContents()
 # ╔═╡ 323c620a-0652-41e6-9190-8d548cba3a1c
 use_CUDA = Ref(true && CUDA.functional())
 
-# ╔═╡ 295c4b99-4554-45d8-ad7a-6f22be5d6b14
-md" ## CUDA
-CUDA accelerates calculation easily by 5-20 times!
-
-Your CUDA is functional: **$(use_CUDA[])**
-"
-
 # ╔═╡ f4fa6dab-d64f-46be-9f13-6cccbf50400a
-var"@mytime" = use_CUDA[] ? CUDA.var"@time" : var"@time"
+#var"@mytime" = use_CUDA[] ? CUDA.var"@time" : var"@time"
 
 # ╔═╡ 00b13143-d9bd-402f-858c-0270a012a61f
-togoc(x) = use_CUDA[] ? CuArray(x) : x
+#togoc(x) = use_CUDA[] ? CuArray(x) : x
 
 # ╔═╡ 6ce9a70c-0162-480a-9177-2715ff2f963a
-ImageShow.simshow(x::CuArray, kwargs...) = simshow(Array(x), kwargs...) 
+#ImageShow.simshow(x::CuArray, kwargs...) = simshow(Array(x), kwargs...) 
 
 # ╔═╡ 57387f24-15a4-4ea8-867e-e7d524c310b4
 
@@ -127,7 +123,7 @@ md"""
 
 
 # 2. Thin Element Approximation
-If an optical field propagate through a medium with non-uniform refractive index, its effect on the beam can described as a multiplication.
+If an optical field propagates through a thin medium with non-uniform refractive index, its effect on the beam can described as a multiplication.
 
 For example, a thin lens with focal length $f$ has a refractive index profile of:
 
@@ -136,6 +132,8 @@ $$T_L(x,y) = \exp\left(- \frac{i\cdot k}{2\cdot f}\cdot (x^2 + y^2) \right)$$
 So the electrical field directly after the lens $U_{+}(x,y)$ is simply:
 
 $$U_{+}(x,y) = T_L(x,y) \cdot (U_{-}(x,y))$$
+
+To observe the effect along the optical axis, we just propagate with the Angular Spectrum method.
 
 """
 
@@ -178,7 +176,7 @@ heatmap(range(0, 200e-6, 200) * 1e6, x_box_2 * 1e6, abs2.(hcat((angular_spectrum
 md"""
 # 3. Multi Slice Propagation
 So now we can apply this idea to a thicker volume by slicing the volume and apply the thin element approximation to each slice.
-Between the slics we use free space propagation.
+Between the slices we use free space propagation.
 
 """
 
@@ -186,6 +184,9 @@ Between the slics we use free space propagation.
 md"## 1. Generate a Ball lens
 Simply by binarizing the pixel values to the refractive index in the medium.
 "
+
+# ╔═╡ 622af1b1-be09-404d-a566-0954c0ca486f
+load("figures/1.png")
 
 # ╔═╡ 1397b1f7-599b-4df5-ad4d-8f626e527a26
 N1 = 512
@@ -203,13 +204,13 @@ n_air = 1.0f0
 n_glass = 1.5f0
 
 # ╔═╡ b796d8c5-dba2-4b5a-9914-80566a5e004d
-y1 = togoc(range(-L1/2, L1/2, N1 + 1)[begin:end-1]);
+y1 = (range(-L1/2, L1/2, N1 + 1)[begin:end-1]);
 
 # ╔═╡ 28e3d7bc-df79-4618-b723-9766706e1726
 x1 = y1';
 
 # ╔═╡ ed9fce6a-416c-41a5-a3df-cbd380dee960
-z1 = reshape(togoc(range(-35f-6, 10f-6, Nz1 + 1)[begin:end-1]), 1, 1, Nz1);
+z1 = reshape((range(-35f-6, 10f-6, Nz1 + 1)[begin:end-1]), 1, 1, Nz1);
 
 # ╔═╡ 94fe19f5-dea0-48aa-9b64-e38961ea1176
 lens1 = ((x1.^2 .+ y1.^2 .+ (z1 .+ 15f-6).^2) .<= (15f-6)^2) * (n_glass .- n_air) .+ n_air;
@@ -233,13 +234,28 @@ heatmap(x1[:] * 1e6, y1[:] * 1e6, Array(beam) .|> abs, xlabel="y in μm", ylabel
 md"## 3. Multi Slice with Ball Lens"
 
 # ╔═╡ ba492d7e-bf99-43b5-88e2-b6c23b24c89d
+md"
+The focal length of the ball lens can be calculated with the thick lensmaker equation
 
+$$
+\frac{1}{f} = (n-1) \left(\frac1{R_1} + \frac{1}{R_2} - \frac{2(n-1)\cdot d}{R_1 \cdot R_2 \cdot n} \right)$$
+
+where $n$ is the refractive index, $R_i$ the radius of curvature of the two surfaces and $d$ the diameter.
+
+In this case the focal length is $25\mathrm{\mu m}$.
+
+"
 
 # ╔═╡ eb06dc36-0f3a-4841-b7e9-31bd8f904cf7
+function f(R₁, R₂, n, d=(abs(R₁) + abs(R₂))) 
+	inv((n-1) *(1 / R₁ - 1 / R₂ + (n-1) * d / (n * R₁ * R₂)))
+end
 
+# ╔═╡ 97b68214-e2dc-4805-87a7-44526ebe5715
+f(15e-6, -15e-6, 1.5)
 
 # ╔═╡ d6125cbc-1def-4b8d-b4e1-1275ea304843
-md"## 2. Generate a Smooth Boundary Lens
+md"## 4. Generate a Smooth Boundary Lens
 In the smooth lens, we calculate for pixels on the border of the lens, what the average refractive index would be.
 
 This results in a more smooth lens surface.
@@ -320,7 +336,7 @@ heatmap(Array(z1[:]) * 1e6, Array(x1[:]) * 1e6, lens1[ix33, :, :], title="Hard L
 heatmap(Array(z1[:]) * 1e6, Array(x1[:]) * 1e6, lens_smooth[ix3, :, :], title="Smooth Lens - x slice at $(round(x1[ix3] * 1e6, digits=2))μm", xlabel="z in μm", ylabel="x in μm")
 
 # ╔═╡ d03c9dbc-ca0a-467e-8efa-cd9dbbde07b9
-md"## 6. Multi Slice with Smooth Boundary Lens"
+md"## 5. Multi Slice with Smooth Boundary Lens"
 
 # ╔═╡ c8a79512-a89d-4d0a-870f-51d28b794c86
 
@@ -332,10 +348,14 @@ md"## 6. Multi Slice with Smooth Boundary Lens"
 
 
 # ╔═╡ 8b99a4f8-7747-46a0-839f-76e83109e5dd
-md"""
-## Systematic Error of the Multi Slice Approach
+md"""## 6. Systematic Error of the Multi Slice Approach
+This seems to be a systematic error of the Multi Slice approach?
+Even for much smaller $z$ discretizations, it goes wrong.
+
+As the refractive occurs mostly as a product with $\Delta z$, we would have expected a very small $\Delta z$ compensate for larger $\Delta n$. But clearly not.
 
 
+Let's test the propagtion of a Gaussian beam in two media, refractive index of 1 and 1.5. If the multi slice approach would be correct, it should also handle the 1.5 medium correctly.
 
 """
 
@@ -377,14 +397,16 @@ gauss_1D_15 = multi_slice_1D(gauss_1D, 633e-9, 40e-6, z_1D, medium_15);
 # ╔═╡ 3b28f6d9-bcf3-407d-b708-e80147d6875b
 gauss_1D_10 = multi_slice_1D(gauss_1D, 633e-9, 40e-6, z_1D, medium_10);
 
-# ╔═╡ e2f2f898-c59e-4b50-9514-63e3b1914644
-
-
 # ╔═╡ 6c3c59bf-83da-4c28-a41c-227fbf7982cd
-heatmap(z_1D * 1e6, x_box * 1e6, abs2.(gauss_1D_15)[:, begin:end-1].^0.2, xlabel="z in μm", ylabel="x in μm")
+begin
+	p1 = heatmap(z_1D * 1e6, x_box * 1e6, abs2.(gauss_1D_15)[:, begin:end-1].^0.2, xlabel="z in μm", ylabel="x in μm", title="n=1.0")
+	p2 = heatmap(z_1D * 1e6, x_box * 1e6, abs2.(gauss_1D_10)[:, begin:end-1].^0.2, xlabel="z in μm", ylabel="x in μm", title="n=1.5")
+	
+	plot(p1, p2, layout=(1,2))
+end
 
-# ╔═╡ e41fa519-0762-45c2-87ce-b0b844ec03d6
-heatmap(z_1D * 1e6, x_box * 1e6, abs2.(gauss_1D_10)[:, begin:end-1].^0.2, xlabel="z in μm", ylabel="x in μm")
+# ╔═╡ 8b594c1d-3404-44e5-9928-2e70912b9b8b
+gauss_1D_15_2 = multi_slice_1D(gauss_1D, 633e-9, 40e-6, z_1D, medium_15; n=1.5);
 
 # ╔═╡ 32007718-eaba-4bb9-8933-7ed836832a23
 md"
@@ -400,12 +422,18 @@ What we obtain at the end, is just a beam propagated in vacuum and not in $n=1.5
 Of course this solution is wrong, since the correct propagation kernel would have been the one with $k=\frac{2\pi}{\lambda} \cdot 1.5$ and not $k=\frac{2\pi}{\lambda}$. So independent of the size of $\Delta z$, the multi-slice approach will fail.
 "
 
-# ╔═╡ 8b594c1d-3404-44e5-9928-2e70912b9b8b
-gauss_1D_15_2 = multi_slice_1D(gauss_1D, 633e-9, 40e-6, z_1D, medium_15; n=1.5);
+# ╔═╡ 984a6719-c67d-494e-b6ca-537d81decd7c
+md"
+### 1. Solution
+
+To get the right propagated Gaussian beam, we need to use the right diffraction kernel with $n=1.5$
+
+If we do so, the correct result will be obtained.
+"
 
 # ╔═╡ 13114099-4e02-496f-9f25-9a136ecd107a
 begin
-	heatmap(z_1D * 1e6, x_box * 1e6, abs2.(gauss_1D_15_2)[:, begin:end-1].^0.7, xlabel="z in μm", ylabel="x in μm")
+	heatmap(z_1D * 1e6, x_box * 1e6, abs2.(gauss_1D_15_2)[:, begin:end-1].^1, xlabel="z in μm", ylabel="x in μm", title="Gaussian Beam correct")
 	plot!(z_1D * 1e6, @. 1e6 * 2e-6 * sqrt(1 + (z_1D / (π * 2e-6^2 * 1.5 / 633e-9))^2))
 	plot!(z_1D * 1e6, @. -1e6 * 2e-6 * sqrt(1 + (z_1D / (π * 2e-6^2 * 1.5 / 633e-9))^2))
 end
@@ -416,18 +444,46 @@ end
 # ╔═╡ f44cc074-3f93-4f0a-a584-6788215c5754
 md"""# 5. Wave Propagation Method
 
+!!! warn "Reference"
+	Schmidt, S., et al. "Wave-optical modeling beyond the thin-element-approximation." Optics Express 24.26 (2016): 30188-30200.
+
+Other researchers noticed this and published the wave propagation method [5] in 2016.
+The mathematical issue of the spatially varying refractive index is, that the diffraction integral cannot be written as a Fourier transform:
+
+
+
+$$E(x,y,z+\Delta z) = \frac{1}{2\pi} \int \widetilde{E}(k_x, k_y, z) \, e^{i k_z(k_x, k_y, x, y) \Delta z} \, e^{i (k_x x + k_y y)} \, \mathrm{d}k_x \, \mathrm{d}k_y$$
+
+$$k_z(k_x, k_y, x, y) = \sqrt{k_0^2 n^2 \left( x,y,z + \frac{\Delta z}{2} \right) - k_x^2 - k_y^2},$$
+
+
+Most optical systems (such as a thick lens) can be splitted into homogenous regions (such as air and glass).
 The key idea, use in the respective region of the medium the correct refractive index! 
 
 So for a medium with air and glass, we do the simulation two times. And then we stitch the field together.
 
+Mathematically, with an index function the following can be achieved:
+
+$$
+I_m^z(x,y) = 
+\begin{cases} 
+1 & n_z(x,y) = n_m, \\
+0 & n_z(x,y) \ne n_m,
+\end{cases}
+$$
+
+$$E(x,y,z+\Delta z) = \sum_m I_m^z(x,y) \mathcal{F}^{-1} \left\{ e^{i k_z^m(k_x,k_y)\Delta z} \mathcal{F} \left\{ E(x,y,z) \right\} \right\},$$
+
+$$k_z^m(k_x, k_y) = \sqrt{k_0^2 n_m^2 - k_x^2 - k_y^2} + \kappa(k_x, k_y).$$
 
 
-## Reference
-* Schmidt, S., et al. "Wave-optical modeling beyond the thin-element-approximation." Optics Express 24.26 (2016): 30188-30200.
 """
 
-# ╔═╡ 9615bb66-844e-4ff6-a299-4b558a9fdc01
+# ╔═╡ 24b316a9-fb50-4247-b160-03e6c14e830b
+md" ## Results
+In this case, the correct focal length (white line) is reproduced correctly.
 
+"
 
 # ╔═╡ da8af402-f368-41d5-99ad-7ccddd6b035e
 
@@ -535,6 +591,34 @@ function radial_prop(f_input, z, λ::T, L, f_refractive_index; N=256, n0=T(1)) w
 	return output, r̄
 end
 
+# ╔═╡ 3833ba9e-f6a1-4e60-bfa7-6e52e83fb5da
+function radial_prop_WPM(f_input, z, λ::T, L, f_refractive_index; N=256, n0=T(1), n1=T(1.5)) where T
+	ν̄, r̄, fwd_f, fwd, bwd = qdht(f_input, 0, L, N)
+
+	Δz = abs(z[2] - z[1])
+	_f(ν, n) = exp(1im * T(2π) * Δz * sqrt(0im .+ n^2 / λ^2 - ν^2))
+	prop_1 = _f.(ν̄, n0)
+	prop_2 = _f.(ν̄, n1)
+
+
+	output = zeros(Complex{T}, (N, length(z) + 1))
+	output[:, 1] = f_input.(r̄)
+
+	dz = abs(z[2] - z[1])
+	for i in 2:length(z) + 1
+		field = output[:, i - 1]
+		n = f_refractive_index.(r̄, z[i - 1]; n0)
+		Δϕ1 = exp.(1im .* T(2π) ./ λ .* (n .- n0) .* dz)
+		Δϕ2 = exp.(1im .* T(2π) ./ λ .* (n .- n1) .* dz)
+		output1 = bwd(prop_1 .* fwd(field .* Δϕ1))
+		output2 = bwd(prop_2 .* fwd(field .* Δϕ2))
+
+		output[:, i] .= (n .≈ n0) .* output1 .+ (n .≈ n1) .* output2
+	end
+
+	return output, r̄
+end
+
 # ╔═╡ c165b464-b470-4e03-bdb1-05b70a24e9b9
 function gaussian_beam(r::T, λ::T, w0::T, z) where T
     # Constants
@@ -564,20 +648,30 @@ function lens_function(r::T, z; n0=1, n_glass=T(1.5), radius=T(15e-6), offset=T(
 end
 
 # ╔═╡ 9a6c1794-9963-4c85-bcf0-77b16f98a52a
-z_gauss = range(-35f-6, 60f-6, 1000);
+z_gauss = range(-35f-6, 10f-6, 200);
 
 # ╔═╡ b3e0efeb-1a69-4249-813c-0abaf87e94c5
-gb_propagated, r_gauss = radial_prop(x -> gaussian_beam(x, 633f-9, 15f-6, 0), z_gauss, 633f-9, 30f-6, lens_function; N=1024)
+@time gb_propagated, r_gauss = radial_prop(x -> gaussian_beam(x, 633f-9, 15f-6, 0), z_gauss[:], 633f-9, 30f-6, lens_function; N=2048)
+
+# ╔═╡ 83cf4959-1f04-4e5c-b84f-f035a2fac8fe
+@time gb_propagated_wpm, r_gauss_wpm = radial_prop_WPM(x -> gaussian_beam(x, 633f-9, 15f-6, 0), z_gauss[:], 633f-9, 30f-6, lens_function; N=2048, n1=1.5f0)
 
 # ╔═╡ b7793022-ee9b-4883-9870-c8aef2e82e49
 begin
-	heatmap(z_gauss, [.- reverse(r_gauss); r_gauss], abs2.([reverse(gb_propagated[:, 2:end], dims=1); gb_propagated[:, 2:end]]).^0.2)
-	vline!(7.5f-6:7.5f-6, c=:white)
+	p5 = heatmap(z_gauss[:], [.- reverse(r_gauss); r_gauss], abs2.([reverse(gb_propagated[:, 2:end], dims=1); gb_propagated[:, 2:end]]).^0.2)
+	vline!(7.5f-6:7.5f-6, c=:white, title="Hankel Transform Multi Slice")
+end
+
+# ╔═╡ 75b73720-77f0-46eb-bf4e-b9e8fbe98d64
+begin
+		heatmap(z_gauss[:], [.- reverse(r_gauss); r_gauss], abs2.([reverse(gb_propagated_wpm[:, 2:end], dims=1); gb_propagated_wpm[:, 2:end]]).^0.2, title="Hankel Transform WPM")
+		vline!(7.5f-6:7.5f-6, c=:white)
+	
 end
 
 # ╔═╡ a11383a2-2483-4fb6-9cf5-bd3fe06f5d1a
 md"""
-# 8. Computational Complexities
+# 7. Computational Complexities
 
 ## Multi Slice
 If we have a field with $N \times N$ pixels, then the Angular Spectrum evalulates at a cost of two FFT transforms, which corresponds to $N^2 \cdot \log N$. But since we propagate $N_z$ steps, the total cost is $N_z \cdot N^2 \cdot \log N$.
@@ -846,7 +940,7 @@ end
 MS, H = plan_multi_slice(beam, lens1, z1[:], λ, L1, n0=1.5f0)
 
 # ╔═╡ 71f0f949-32ec-4cb0-ae8a-5c1091d82796
-@mytime result = MS(beam);
+@time result = MS(beam);
 
 # ╔═╡ 611a6aba-1c2f-4c05-ae36-3c646fdaedc4
 begin
@@ -856,10 +950,10 @@ begin
 end
 
 # ╔═╡ 150cae90-4709-4adc-9933-d2bd073d49a2
-MS_smooth, _ = plan_multi_slice(beam, togoc(lens_smooth), z1[:], λ, L1, n0=1.0f0)
+MS_smooth, _ = plan_multi_slice(beam, (lens_smooth), z1[:], λ, L1, n0=1.0f0)
 
 # ╔═╡ 2155a928-59e5-42b5-b98c-c83133260b18
-@mytime result_smooth = MS_smooth(beam);
+@time result_smooth = MS_smooth(beam);
 
 # ╔═╡ 7b5d3741-1f0f-42f1-9aba-24d5b3630a9b
 begin
@@ -878,7 +972,7 @@ Return an efficient function to propagate an initial `beam` through a `medium` w
 
 `n0` is the average refractive index used for propagation.
 """
-function plan_WPM(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1, n_lens=1.5f0) where CT
+function plan_WPM(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1, n_lens=1.5f0, medium_index=medium) where CT
 
 	buffer1 = similar(beam, (2 .* size(beam)[1:2]..., 2))
 	buffer2 = similar(buffer1)
@@ -934,7 +1028,7 @@ function plan_WPM(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1, n_lens=1.5
 				field_out_cropped = crop_center(field_out, (size(field)))
 
 				# assemble field parts
-				field_history[:, :, i + 1] .= field_out_cropped[:, :, 1] .* (medium[:, :, i] .≈ n0) .+  field_out_cropped[:, :, 2] .* (medium[:, :, i] .≈ n_lens)
+				field_history[:, :, i + 1] .= field_out_cropped[:, :, 1] .* (medium_index[:, :, i] .≈ n0) .+  field_out_cropped[:, :, 2] .* (medium_index[:, :, i] .≈ n_lens)
 			end
 			return field_history
 		end
@@ -943,23 +1037,33 @@ function plan_WPM(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1, n_lens=1.5
 end
 
 # ╔═╡ ec4a4ae1-b201-4e1c-bbc0-16f47813240e
-WPM, H2 = plan_WPM(beam, lens1, z1[:], λ, L1, n0=1f0, n_lens=n_glass)
+WPM, _ = plan_WPM(beam, lens1, z1[:], λ, L1, n0=1f0, n_lens=n_glass)
 
 # ╔═╡ ff7bc968-4fb0-4e0c-9e99-25d9298a6d93
-@mytime result_wpm = WPM(beam);
+@time result_wpm = WPM(beam);
 
 # ╔═╡ 1969105b-a579-4f05-a7b6-4af7cb1b259e
 sum(result_wpm[:,:,1])
 
 # ╔═╡ 98f00b68-07bd-4861-a820-8de833d15444
 begin
-	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result_wpm[:, size(result_wpm, 2)÷2 +1, begin:end-1])).^0.3, grid=:white, xlabel="z in μm", ylabel="x in μm")
+	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result_wpm[:, size(result_wpm, 2)÷2 +1, begin:end-1])).^0.2, grid=:white, xlabel="z in μm", ylabel="x in μm", title="WPM")
 	vline!((7.5f-6:7.5f-6) * 1e6, c=:white)
 	#heatmap(Array(lens1[:, size(result_wpm, 2)÷2 +1, begin:end-1]), grid=:white)
 end
 
-# ╔═╡ df0852dd-90e5-4493-8732-85140365904a
+# ╔═╡ f32830eb-e0e1-4a9a-8a73-520e7a9f8bdd
+WPM_smooth, _ = plan_WPM(beam, lens_smooth, z1[:], λ, L1, n0=1f0, n_lens=n_glass, medium_index=lens1)
 
+# ╔═╡ df7c0a6b-5308-41bf-8f9b-e308aa7169c1
+@time result_wpm_smooth = WPM_smooth(beam);
+
+# ╔═╡ 9615bb66-844e-4ff6-a299-4b558a9fdc01
+begin
+	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result_wpm_smooth[:, size(result_wpm, 2)÷2 +1, begin:end-1])).^0.2, grid=:white, xlabel="z in μm", ylabel="x in μm", title="WPM Smooth Lens")
+	vline!((7.5f-6:7.5f-6) * 1e6, c=:white)
+	#heatmap(Array(lens1[:, size(result_wpm, 2)÷2 +1, begin:end-1]), grid=:white)
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -967,6 +1071,7 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 EllipsisNotation = "da5c29d0-fa7d-589e-88eb-ea29b0a81949"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 FunctionZeros = "b21f74c0-b399-568f-9643-d20f4fa2c814"
 ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
 ImageShow = "4e3cecfd-b093-5904-9786-8bbb286a6a31"
@@ -980,6 +1085,7 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 CUDA = "~5.5.2"
 EllipsisNotation = "~1.8.0"
 FFTW = "~1.8.0"
+FileIO = "~1.16.6"
 FunctionZeros = "~1.0.0"
 ImageIO = "~0.6.9"
 ImageShow = "~0.3.8"
@@ -996,7 +1102,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "f1df9263466937d499a5b9567aec6d5e9a9173bb"
+project_hash = "659af3f09d890a500d868ba9a043f2457a171714"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1411,9 +1517,13 @@ version = "3.3.10+1"
 
 [[deps.FileIO]]
 deps = ["Pkg", "Requires", "UUIDs"]
-git-tree-sha1 = "62ca0547a14c57e98154423419d8a342dca75ca9"
+git-tree-sha1 = "2dd20384bf8c6d411b5c7370865b1e9b26cb2ea3"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.16.4"
+version = "1.16.6"
+weakdeps = ["HTTP"]
+
+    [deps.FileIO.extensions]
+    HTTPExt = "HTTP"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -2928,7 +3038,6 @@ version = "1.4.1+1"
 # ╠═e0ad01cc-622d-4505-ba8b-29b504f92300
 # ╠═526365f7-9a74-4c7c-9d9e-95fd7de1b549
 # ╠═323c620a-0652-41e6-9190-8d548cba3a1c
-# ╟─295c4b99-4554-45d8-ad7a-6f22be5d6b14
 # ╠═f4fa6dab-d64f-46be-9f13-6cccbf50400a
 # ╠═00b13143-d9bd-402f-858c-0270a012a61f
 # ╠═6ce9a70c-0162-480a-9177-2715ff2f963a
@@ -2954,6 +3063,7 @@ version = "1.4.1+1"
 # ╟─3f76ed4a-2c67-4d16-b6ba-a3388dd3a0c4
 # ╟─17a0fb88-f01f-4940-85bb-1283f0bfc74e
 # ╟─209d08ae-168e-48e0-a4b7-6f842c291a73
+# ╟─622af1b1-be09-404d-a566-0954c0ca486f
 # ╠═1397b1f7-599b-4df5-ad4d-8f626e527a26
 # ╠═97f4e89f-b946-41a8-bfa8-b5325580e143
 # ╠═bdae79e7-5976-4a2e-b3da-be809d8de95f
@@ -2974,8 +3084,9 @@ version = "1.4.1+1"
 # ╠═79d5496c-d9a1-442e-b69a-ffac33288ab1
 # ╠═71f0f949-32ec-4cb0-ae8a-5c1091d82796
 # ╟─611a6aba-1c2f-4c05-ae36-3c646fdaedc4
-# ╠═ba492d7e-bf99-43b5-88e2-b6c23b24c89d
-# ╠═eb06dc36-0f3a-4841-b7e9-31bd8f904cf7
+# ╟─ba492d7e-bf99-43b5-88e2-b6c23b24c89d
+# ╟─eb06dc36-0f3a-4841-b7e9-31bd8f904cf7
+# ╠═97b68214-e2dc-4805-87a7-44526ebe5715
 # ╟─d6125cbc-1def-4b8d-b4e1-1275ea304843
 # ╟─25c26f57-c5a4-4137-a8e2-407cbc9c7dbe
 # ╠═c2aac6a8-8daa-4cac-adff-e7dec47992b2
@@ -2988,7 +3099,7 @@ version = "1.4.1+1"
 # ╠═c8a79512-a89d-4d0a-870f-51d28b794c86
 # ╠═b90bfc22-8e14-4220-8829-fc22abe45bfe
 # ╠═fea61f95-2fdb-49b0-b0ab-8160d5de3ef9
-# ╠═8b99a4f8-7747-46a0-839f-76e83109e5dd
+# ╟─8b99a4f8-7747-46a0-839f-76e83109e5dd
 # ╠═79c34154-2bbd-4056-9aa0-5574ec54e702
 # ╠═4c237907-c679-4ae2-b570-d4de519aaebf
 # ╠═1f9aaa64-a0b1-46e1-b8b3-cd57f7ef8002
@@ -2996,30 +3107,35 @@ version = "1.4.1+1"
 # ╠═6c82815c-4059-49be-bf78-a08a6cdebe36
 # ╠═5e63ba45-9416-4ac0-afe9-9724bd1d84b0
 # ╠═3b28f6d9-bcf3-407d-b708-e80147d6875b
-# ╠═e2f2f898-c59e-4b50-9514-63e3b1914644
 # ╟─6c3c59bf-83da-4c28-a41c-227fbf7982cd
-# ╟─e41fa519-0762-45c2-87ce-b0b844ec03d6
-# ╟─32007718-eaba-4bb9-8933-7ed836832a23
 # ╠═8b594c1d-3404-44e5-9928-2e70912b9b8b
+# ╟─32007718-eaba-4bb9-8933-7ed836832a23
+# ╟─984a6719-c67d-494e-b6ca-537d81decd7c
 # ╟─13114099-4e02-496f-9f25-9a136ecd107a
 # ╠═99def499-4fcb-47a1-8c0c-3f26400707ba
 # ╟─f44cc074-3f93-4f0a-a584-6788215c5754
 # ╟─6fd65d63-65c9-4bc9-8259-376387e0b69d
 # ╠═ec4a4ae1-b201-4e1c-bbc0-16f47813240e
+# ╠═f32830eb-e0e1-4a9a-8a73-520e7a9f8bdd
 # ╠═ff7bc968-4fb0-4e0c-9e99-25d9298a6d93
+# ╠═df7c0a6b-5308-41bf-8f9b-e308aa7169c1
 # ╠═1969105b-a579-4f05-a7b6-4af7cb1b259e
+# ╟─24b316a9-fb50-4247-b160-03e6c14e830b
 # ╟─98f00b68-07bd-4861-a820-8de833d15444
-# ╠═9615bb66-844e-4ff6-a299-4b558a9fdc01
+# ╟─9615bb66-844e-4ff6-a299-4b558a9fdc01
 # ╠═da8af402-f368-41d5-99ad-7ccddd6b035e
 # ╟─d5c38a9c-9f98-4888-a5e5-1b61c99a17a3
 # ╟─3df428e4-6b40-4602-a1fe-ac0ef7ea3401
 # ╠═7475d1bc-4a84-4d8a-99ff-67287ca4760b
 # ╠═5e6ed976-1a80-4a85-bfc9-20d7936db26a
+# ╠═3833ba9e-f6a1-4e60-bfa7-6e52e83fb5da
 # ╠═c165b464-b470-4e03-bdb1-05b70a24e9b9
 # ╠═e8e428cc-2f7b-4bda-8a03-845631f55c43
 # ╠═9a6c1794-9963-4c85-bcf0-77b16f98a52a
 # ╠═b3e0efeb-1a69-4249-813c-0abaf87e94c5
-# ╠═b7793022-ee9b-4883-9870-c8aef2e82e49
+# ╠═83cf4959-1f04-4e5c-b84f-f035a2fac8fe
+# ╟─b7793022-ee9b-4883-9870-c8aef2e82e49
+# ╟─75b73720-77f0-46eb-bf4e-b9e8fbe98d64
 # ╟─a11383a2-2483-4fb6-9cf5-bd3fe06f5d1a
 # ╟─f609e529-d872-4bc0-b512-191ff3b3f4b9
 # ╠═cef65203-91f6-4879-98b7-3419d1d98e12
@@ -3032,6 +3148,5 @@ version = "1.4.1+1"
 # ╟─58a545b3-a5f5-4ed6-8132-6f1384882aa6
 # ╟─f101181f-e10b-41a6-bb31-2476ac2257af
 # ╠═3b82958b-9514-483d-b4a9-61a1cf0d0800
-# ╠═df0852dd-90e5-4493-8732-85140365904a
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
