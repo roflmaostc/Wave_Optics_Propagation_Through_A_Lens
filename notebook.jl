@@ -180,13 +180,16 @@ Between the slices we use free space propagation.
 
 """
 
+# ╔═╡ 622af1b1-be09-404d-a566-0954c0ca486f
+load("figures/1.png")
+
 # ╔═╡ 209d08ae-168e-48e0-a4b7-6f842c291a73
 md"## 1. Generate a Ball lens
 Simply by binarizing the pixel values to the refractive index in the medium.
 "
 
-# ╔═╡ 622af1b1-be09-404d-a566-0954c0ca486f
-load("figures/1.png")
+# ╔═╡ 8e798c1d-9386-4446-bb12-11d0a7de0277
+load("figures/2.png")
 
 # ╔═╡ 1397b1f7-599b-4df5-ad4d-8f626e527a26
 N1 = 512
@@ -260,6 +263,9 @@ In the smooth lens, we calculate for pixels on the border of the lens, what the 
 
 This results in a more smooth lens surface.
 "
+
+# ╔═╡ 3c8b36b0-c777-4b03-b2d6-0cfa19e6b40c
+load("figures/3.png")
 
 # ╔═╡ 25c26f57-c5a4-4137-a8e2-407cbc9c7dbe
 """
@@ -442,7 +448,7 @@ end
 
 
 # ╔═╡ f44cc074-3f93-4f0a-a584-6788215c5754
-md"""# 5. Wave Propagation Method
+md"""# 4. Wave Propagation Method
 
 !!! warn "Reference"
 	Schmidt, S., et al. "Wave-optical modeling beyond the thin-element-approximation." Optics Express 24.26 (2016): 30188-30200.
@@ -491,7 +497,7 @@ In this case, the correct focal length (white line) is reproduced correctly.
 # ╔═╡ d5c38a9c-9f98-4888-a5e5-1b61c99a17a3
 md"""
 
-# 6. Hankel Transform
+# 5. Hankel Transform
 !!! warn "Reference"
 	Manuel Guizar-Sicairos and Julio C. Gutiérrez-Vega, \"Computation of quasi-discrete Hankel transforms of integer order for propagating optical wave fields,\" J. Opt. Soc. Am. A 21, 53-58 (2004) 
 
@@ -671,7 +677,7 @@ end
 
 # ╔═╡ a11383a2-2483-4fb6-9cf5-bd3fe06f5d1a
 md"""
-# 7. Computational Complexities
+# 6. Computational Complexities
 
 ## Multi Slice
 If we have a field with $N \times N$ pixels, then the Angular Spectrum evalulates at a cost of two FFT transforms, which corresponds to $N^2 \cdot \log N$. But since we propagate $N_z$ steps, the total cost is $N_z \cdot N^2 \cdot \log N$.
@@ -937,7 +943,7 @@ function plan_multi_slice(beam::AbstractArray{CT, 2}, medium, z, λ, L; n0=1) wh
 end
 
 # ╔═╡ 79d5496c-d9a1-442e-b69a-ffac33288ab1
-MS, H = plan_multi_slice(beam, lens1, z1[:], λ, L1, n0=1.5f0)
+MS, H = plan_multi_slice(beam, lens1, z1[:], λ, L1, n0=1.f0)
 
 # ╔═╡ 71f0f949-32ec-4cb0-ae8a-5c1091d82796
 @time result = MS(beam);
@@ -3062,8 +3068,9 @@ version = "1.4.1+1"
 # ╠═9bdb1c18-12d6-45c4-8048-597c1926e056
 # ╟─3f76ed4a-2c67-4d16-b6ba-a3388dd3a0c4
 # ╟─17a0fb88-f01f-4940-85bb-1283f0bfc74e
-# ╟─209d08ae-168e-48e0-a4b7-6f842c291a73
 # ╟─622af1b1-be09-404d-a566-0954c0ca486f
+# ╟─209d08ae-168e-48e0-a4b7-6f842c291a73
+# ╟─8e798c1d-9386-4446-bb12-11d0a7de0277
 # ╠═1397b1f7-599b-4df5-ad4d-8f626e527a26
 # ╠═97f4e89f-b946-41a8-bfa8-b5325580e143
 # ╠═bdae79e7-5976-4a2e-b3da-be809d8de95f
@@ -3088,6 +3095,7 @@ version = "1.4.1+1"
 # ╟─eb06dc36-0f3a-4841-b7e9-31bd8f904cf7
 # ╠═97b68214-e2dc-4805-87a7-44526ebe5715
 # ╟─d6125cbc-1def-4b8d-b4e1-1275ea304843
+# ╟─3c8b36b0-c777-4b03-b2d6-0cfa19e6b40c
 # ╟─25c26f57-c5a4-4137-a8e2-407cbc9c7dbe
 # ╠═c2aac6a8-8daa-4cac-adff-e7dec47992b2
 # ╟─f4d61401-c33a-45df-9ce3-1a0c8763bb2e

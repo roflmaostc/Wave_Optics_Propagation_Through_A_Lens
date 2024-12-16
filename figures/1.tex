@@ -4,11 +4,16 @@
 \usepackage{tikz}
 \usetikzlibrary{calc}
 \usepackage{amsmath}
+
+
+\definecolor{lensblue}{HTML}{95D1FF}
+
+
 \begin{document}
 
 \begin{tikzpicture}
-  \draw[fill=blue!10!white] (-4, -4) rectangle (4, 4);
-  \draw[thick, fill=blue!40!white] (0,0)  circle (3);
+  \draw[fill=gray] (-4, -4) rectangle (4, 4);
+  \draw[thick, fill=lensblue] (0,0)  circle (3);
   \node at (3.5,3.5) {\large $n_\text{air}$};
   \node at (1.5,1.5) {\large $n_\text{lens}$};
 
