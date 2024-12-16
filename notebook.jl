@@ -511,12 +511,12 @@ $$\mathcal{F}[f](\kappa, \phi) = \int_{0}^{\infty} \int_{0}^{2\pi} r f(r, \theta
 
 where $\kappa = \sqrt{k_x^2 + k_y^2}$ and $r=\sqrt{x^2 + y^2}$
 
-We can replace with
+We can now use
 
 $$\exp(i x \cdot \sin(\theta)) = \sum_{n=-\infty}^{\infty} J_n(x) \cdot \exp(i n \theta)$$
 where $J_n$ is the nth-order Bessel function of the first kind.
 
-After integration over $\theta$, it only remains if $f$ has no $\theta$ dependency
+After integration (if $f$ has no $\theta$ dependency) over $\theta$ it only remains 
 
 $$\mathcal{F}[f](\kappa, \phi) = 2\pi \int_{0}^{\infty} r \cdot f(r) \cdot J_0(\kappa \cdot r) \, \mathrm{d}r = \mathcal{H}[f](\rho)$$
 
@@ -654,7 +654,7 @@ function lens_function(r::T, z; n0=1, n_glass=T(1.5), radius=T(15e-6), offset=T(
 end
 
 # ╔═╡ 9a6c1794-9963-4c85-bcf0-77b16f98a52a
-z_gauss = range(-35f-6, 10f-6, 200);
+z_gauss = range(-35f-6, 10f-6, 1024);
 
 # ╔═╡ b3e0efeb-1a69-4249-813c-0abaf87e94c5
 @time gb_propagated, r_gauss = radial_prop(x -> gaussian_beam(x, 633f-9, 15f-6, 0), z_gauss[:], 633f-9, 30f-6, lens_function; N=2048)
