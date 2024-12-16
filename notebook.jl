@@ -19,6 +19,9 @@ end
 # ╔═╡ 7112c7f2-a35a-11ef-0005-b77b37b5bb2c
 using ImageShow, ImageIO, Plots, FFTW, CUDA,NDTools, PlutoUI, IndexFunArrays, EllipsisNotation,  FunctionZeros, SpecialFunctions, FileIO
 
+# ╔═╡ 55fc243d-b162-43fa-b755-846ab413d530
+using PlutoTeachingTools
+
 # ╔═╡ 1bc50357-ec6a-404a-a2b9-b8d31b153475
 md"# 0. Load packages
 On the first run, Julia is going to install some packages automatically. So start this notebook and give it some minutes (5-10min) to install all packages. 
@@ -27,6 +30,9 @@ No worries, any future runs will be much faster to start!
 
 However, the simulations take quite some minutes, so don't be impatient :)
 "
+
+# ╔═╡ 15fe405d-a554-44b4-a527-45ddcbcdfad8
+ChooseDisplayMode()
 
 # ╔═╡ e0ad01cc-622d-4505-ba8b-29b504f92300
 begin
@@ -50,7 +56,19 @@ use_CUDA = Ref(true && CUDA.functional())
 #ImageShow.simshow(x::CuArray, kwargs...) = simshow(Array(x), kwargs...) 
 
 # ╔═╡ 57387f24-15a4-4ea8-867e-e7d524c310b4
+md"# Limits and Possibilities of the Multi Slice Propagation
 
+[Felix Wechsler](https://www.felixwechsler.science)
+
+PhD Student at the Laboratory of Applied Photonics Devices (LAPD)
+
+Supervised by Christophe Moser
+
+Presentation available: [go.epfl.ch/multi_slice](https://go.epfl.ch/multi_slice)
+"
+
+# ╔═╡ 443840db-b308-4202-b47d-7a96779f6648
+load("qrcode.png")
 
 # ╔═╡ d09a7268-e3f6-4ced-8cca-24b718895c19
 md"""
@@ -99,11 +117,14 @@ end
 # ╔═╡ 069ea1ca-d759-4fde-addb-ebf8cefd1596
 x_box = range(-20e-6, 20e-6, 513)[begin:end-1];
 
+# ╔═╡ 377246ab-19ba-4636-b527-83deac269574
+@bind z_dist Slider(range(0, 1000e-6, 100), show_value=true)
+
 # ╔═╡ 6dcc011d-6d91-401f-b4ef-f78ddce62398
-box_propagated = angular_spectrum(box, 633e-9, 40e-6, 15e-6);
+box_propagated = angular_spectrum(box, 633e-9, 40e-6, z_dist, 1.0);
 
 # ╔═╡ 24414435-617b-4fa5-a500-850ec67da0dc
-box_propagated_13 = angular_spectrum(box, 633e-9, 40e-6, 15e-6, 1.3);
+box_propagated_13 = angular_spectrum(box, 633e-9, 40e-6, z_dist, 1.3);
 
 # ╔═╡ 2d4d4582-65cf-48fa-b369-a808627feb6a
 begin
@@ -113,7 +134,7 @@ begin
 end
 
 # ╔═╡ 6d3b05ba-c1c9-475b-82c8-6ffd1175f161
-heatmap(range(0, 200e-6, 200) * 1e6, x_box * 1e6, abs2.(hcat((angular_spectrum(box, 633e-9, 40e-6, z) for z in range(0, 200e-6, 200))...)), xlabel="z in μm", ylabel="x in μm")
+heatmap(range(0, 200e-6, 200) * 1e6, x_box * 1e6, abs2.(hcat((angular_spectrum(box, 633e-9, 40e-6, z) for z in range(0, 200e-6, 200))...)).^0.6, xlabel="z in μm", ylabel="x in μm")
 
 # ╔═╡ d259a222-bdd1-4af1-8a32-be942551dc77
 
@@ -151,8 +172,9 @@ In this case we put the thin phase mask of a lens, and check that the beam gets 
 
 # ╔═╡ 5bc6b3ae-29d5-4df7-8f35-2154ca0ef34b
 begin
-	box_2 = ones((512,));
-end
+	box_2 = zeros((512,));
+	box_2[50:512-50] .= 1
+end;
 
 # ╔═╡ 47d0d3d3-83f5-4263-af38-b21a20714744
 x_box_2 = range(-40e-6, 40e-6, 513)[begin:end-1];
@@ -161,7 +183,7 @@ x_box_2 = range(-40e-6, 40e-6, 513)[begin:end-1];
 focal_length = 150e-6
 
 # ╔═╡ ac6dcc8a-e940-490b-b697-c61bcde333ec
-box_2_lens = @. exp(-1im * 2π/ 633e-9 / 2 / focal_length * x_box_2^2)# * box;
+box_2_lens = @. exp(-1im * 2π/ 633e-9 / 2 / focal_length * x_box_2^2) * box_2;
 
 # ╔═╡ 6f7ad76b-a21c-4413-97e8-6a3b33c13a00
 heatmap(range(0, 200e-6, 200) * 1e6, x_box_2 * 1e6, abs2.(hcat((angular_spectrum(box_2_lens, 633e-9, 80e-6, z) for z in range(0, 200e-6, 200))...)).^0.5, xlabel="z in μm", ylabel="x in μm")
@@ -192,13 +214,13 @@ Simply by binarizing the pixel values to the refractive index in the medium.
 load("figures/2.png")
 
 # ╔═╡ 1397b1f7-599b-4df5-ad4d-8f626e527a26
-N1 = 512
+N1 = 1024
 
 # ╔═╡ 97f4e89f-b946-41a8-bfa8-b5325580e143
 L1 = 60f-6
 
 # ╔═╡ bdae79e7-5976-4a2e-b3da-be809d8de95f
-Nz1 = 200
+Nz1 = 512
 
 # ╔═╡ fe605fa6-b394-4531-8fff-93d7e755e8bb
 n_air = 1.0f0
@@ -241,7 +263,7 @@ md"
 The focal length of the ball lens can be calculated with the thick lensmaker equation
 
 $$
-\frac{1}{f} = (n-1) \left(\frac1{R_1} + \frac{1}{R_2} - \frac{2(n-1)\cdot d}{R_1 \cdot R_2 \cdot n} \right)$$
+\frac{1}{f} = (n-1) \left(\frac1{R_1} - \frac{1}{R_2} + \frac{2(n-1)\cdot d}{R_1 \cdot R_2 \cdot n} \right)$$
 
 where $n$ is the refractive index, $R_i$ the radius of curvature of the two surfaces and $d$ the diameter.
 
@@ -679,13 +701,13 @@ end
 md"""
 # 6. Computational Complexities
 
-## Multi Slice
+### Multi Slice
 If we have a field with $N \times N$ pixels, then the Angular Spectrum evalulates at a cost of two FFT transforms, which corresponds to $N^2 \cdot \log N$. But since we propagate $N_z$ steps, the total cost is $N_z \cdot N^2 \cdot \log N$.
 The total memory cost is $N^2 \cdot N_z$
 
-## Hankel Transform
+### Hankel Transform
 The Hankel transform reduces this 2D field to a 1D field with only size $N_r$.
-To propagate to another plane, we need two fast Hankel transform which evaluate each a matrix product. The total price for this is $N_r^2$. Since we do $N_z$ steps, we obtain $N_r^2 \cdot N_z$. The total memory cost is only $N_r \cdot N_z$.
+To propagate to another plane, we need two fast Hankel transform which evaluate each a matrix vector product. The total price for this is $N_r^2$. Since we do $N_z$ steps, we obtain $N_r^2 \cdot N_z$. The total memory cost is only $N_r \cdot N_z$.
 
 """
 
@@ -951,8 +973,10 @@ MS, H = plan_multi_slice(beam, lens1, z1[:], λ, L1, n0=1.f0)
 # ╔═╡ 611a6aba-1c2f-4c05-ae36-3c646fdaedc4
 begin
 	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result[:, size(result, 2)÷2 + 1, begin:end-1])).^0.2, grid=:white, xlabel="z in μm", ylabel="x in μm")
-	vline!((7.5f-6:7.5f-6) * 1e6, c=:white)
+	vline!((7.5f-6:7.5f-6) * 1e6, c=:white, label="real focus")
 	#heatmap(Array(z1)[begin:end-1], Array(x1)[:], Array(lens1[:, 257, begin:end-1]), grid=:white)
+	plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens")
+
 end
 
 # ╔═╡ 150cae90-4709-4adc-9933-d2bd073d49a2
@@ -964,8 +988,9 @@ MS_smooth, _ = plan_multi_slice(beam, (lens_smooth), z1[:], λ, L1, n0=1.0f0)
 # ╔═╡ 7b5d3741-1f0f-42f1-9aba-24d5b3630a9b
 begin
 	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result_smooth[:, size(result_smooth, 2)÷2 + 1, begin:end-1])).^0.2, grid=:white)
-	vline!(7.5:7.5, c=:white, xlabel="z in μm", ylabel="x in μm")
+	vline!(7.5:7.5, c=:white, xlabel="z in μm", ylabel="x in μm", label="real focus")
 	#heatmap(Array(z1)[begin:end-1], Array(x1)[:], Array(lens1[:, 257, begin:end-1]), grid=:white)
+	plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens")
 end
 
 # ╔═╡ 6fd65d63-65c9-4bc9-8259-376387e0b69d
@@ -1084,6 +1109,7 @@ ImageShow = "4e3cecfd-b093-5904-9786-8bbb286a6a31"
 IndexFunArrays = "613c443e-d742-454e-bfc6-1d7f8dd76566"
 NDTools = "98581153-e998-4eef-8d0d-5ec2c052313d"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 
@@ -1098,6 +1124,7 @@ ImageShow = "~0.3.8"
 IndexFunArrays = "~0.2.7"
 NDTools = "~0.7.0"
 Plots = "~1.40.8"
+PlutoTeachingTools = "~0.3.1"
 PlutoUI = "~0.7.60"
 SpecialFunctions = "~2.4.0"
 """
@@ -1108,7 +1135,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "659af3f09d890a500d868ba9a043f2457a171714"
+project_hash = "4a1ac22c9a98c10d94ee494a08df2cd25d5d8601"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1317,6 +1344,12 @@ weakdeps = ["SparseArrays"]
 
     [deps.ChainRulesCore.extensions]
     ChainRulesCoreSparseArraysExt = "SparseArrays"
+
+[[deps.CodeTracking]]
+deps = ["InteractiveUtils", "UUIDs"]
+git-tree-sha1 = "7eee164f122511d3e4e1ebadb7956939ea7e1c77"
+uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
+version = "1.3.6"
 
 [[deps.CodecZlib]]
 deps = ["TranscodingStreams", "Zlib_jll"]
@@ -1844,6 +1877,12 @@ git-tree-sha1 = "25ee0be4d43d0269027024d75a24c24d6c6e590c"
 uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
 version = "3.0.4+0"
 
+[[deps.JuliaInterpreter]]
+deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
+git-tree-sha1 = "10da5154188682e5c0726823c2b5125957ec3778"
+uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
+version = "0.9.38"
+
 [[deps.JuliaNVTXCallbacks_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "af433a10f3942e882d3c671aacb203e006a5808f"
@@ -2049,6 +2088,12 @@ deps = ["Dates", "Logging"]
 git-tree-sha1 = "f02b56007b064fbfddb4c9cd60161b6dd0f40df3"
 uuid = "e6f89c97-d47a-5376-807f-9c37f3926c36"
 version = "1.1.0"
+
+[[deps.LoweredCodeUtils]]
+deps = ["JuliaInterpreter"]
+git-tree-sha1 = "688d6d9e098109051ae33d126fcfc88c4ce4a021"
+uuid = "6f1432cf-f94c-5a45-995e-cdbf5db27b0b"
+version = "3.1.0"
 
 [[deps.MIMEs]]
 git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
@@ -2300,6 +2345,24 @@ version = "1.40.8"
     ImageInTerminal = "d8c32880-2388-543b-8c61-d9f865259254"
     Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
+[[deps.PlutoHooks]]
+deps = ["InteractiveUtils", "Markdown", "UUIDs"]
+git-tree-sha1 = "072cdf20c9b0507fdd977d7d246d90030609674b"
+uuid = "0ff47ea0-7a50-410d-8455-4348d5de0774"
+version = "0.0.5"
+
+[[deps.PlutoLinks]]
+deps = ["FileWatching", "InteractiveUtils", "Markdown", "PlutoHooks", "Revise", "UUIDs"]
+git-tree-sha1 = "8f5fa7056e6dcfb23ac5211de38e6c03f6367794"
+uuid = "0ff47ea0-7a50-410d-8455-4348d5de0420"
+version = "0.1.6"
+
+[[deps.PlutoTeachingTools]]
+deps = ["Downloads", "HypertextLiteral", "Latexify", "Markdown", "PlutoLinks", "PlutoUI"]
+git-tree-sha1 = "8252b5de1f81dc103eb0293523ddf917695adea1"
+uuid = "661c6b06-c737-4d37-b85c-46df65de6f69"
+version = "0.3.1"
+
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
 git-tree-sha1 = "eba4810d5e6a01f612b948c9fa94f905b49087b0"
@@ -2426,6 +2489,12 @@ deps = ["UUIDs"]
 git-tree-sha1 = "838a3a4188e2ded87a4f9f184b4b0d78a1e91cb7"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.3.0"
+
+[[deps.Revise]]
+deps = ["CodeTracking", "Distributed", "FileWatching", "JuliaInterpreter", "LibGit2", "LoweredCodeUtils", "OrderedCollections", "REPL", "Requires", "UUIDs", "Unicode"]
+git-tree-sha1 = "470f48c9c4ea2170fd4d0f8eb5118327aada22f5"
+uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
+version = "3.6.4"
 
 [[deps.Roots]]
 deps = ["Accessors", "CommonSolve", "Printf"]
@@ -3041,19 +3110,23 @@ version = "1.4.1+1"
 # ╔═╡ Cell order:
 # ╟─1bc50357-ec6a-404a-a2b9-b8d31b153475
 # ╠═7112c7f2-a35a-11ef-0005-b77b37b5bb2c
+# ╠═55fc243d-b162-43fa-b755-846ab413d530
+# ╠═15fe405d-a554-44b4-a527-45ddcbcdfad8
 # ╠═e0ad01cc-622d-4505-ba8b-29b504f92300
 # ╠═526365f7-9a74-4c7c-9d9e-95fd7de1b549
 # ╠═323c620a-0652-41e6-9190-8d548cba3a1c
 # ╠═f4fa6dab-d64f-46be-9f13-6cccbf50400a
 # ╠═00b13143-d9bd-402f-858c-0270a012a61f
 # ╠═6ce9a70c-0162-480a-9177-2715ff2f963a
-# ╠═57387f24-15a4-4ea8-867e-e7d524c310b4
+# ╟─57387f24-15a4-4ea8-867e-e7d524c310b4
+# ╟─443840db-b308-4202-b47d-7a96779f6648
 # ╟─d09a7268-e3f6-4ced-8cca-24b718895c19
 # ╠═5c16ec60-8531-40a6-9dde-8997b13f91e2
 # ╠═bcf50548-670b-43dd-8d10-0763aeac423b
 # ╠═069ea1ca-d759-4fde-addb-ebf8cefd1596
 # ╠═6dcc011d-6d91-401f-b4ef-f78ddce62398
 # ╠═24414435-617b-4fa5-a500-850ec67da0dc
+# ╟─377246ab-19ba-4636-b527-83deac269574
 # ╟─2d4d4582-65cf-48fa-b369-a808627feb6a
 # ╟─6d3b05ba-c1c9-475b-82c8-6ffd1175f161
 # ╠═d259a222-bdd1-4af1-8a32-be942551dc77
