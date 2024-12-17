@@ -1,0 +1,148 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage{geometry}
+
+% Set small borders with the geometry package
+\geometry{
+  top=3cm,     % Top margin
+  bottom=3cm,  % Bottom margin
+  left=2.5cm,    % Left margin
+  right=2.5cm,   % Right margin
+}
+
+\usepackage{amsmath}  % For mathematical symbols and equations
+\usepackage{amsfonts} % For extra fonts
+\usepackage{graphicx} % For including graphics
+\usepackage{hyperref} % For hyperlinks (optional)
+
+
+\usepackage[
+    backend=biber,
+    sorting=none,
+]{biblatex}
+\addbibresource{references.bib}
+
+\usepackage{setspace} % For line spacing
+% \onehalfspacing
+
+
+\title{Wave Optical Simulation of Thick Optical Elements}
+\author{Felix Wechsler}
+\date{\today}
+\setlength\parindent{0pt}
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\begin{abstract}
+In this proposal, we outline our approach to simulating optical lenses using a wave optics framework. We aim to apply and compare various methods for accurately modeling wave propagation through thick lenses, evaluating each method's performance.
+\end{abstract}
+
+
+\section{Introduction}
+Ray optical tools are standard tools to characterize optical elements. However, going to smaller scales the wave nature of light is not negligible.
+In this work, we study if simple wave optical algorithms such as the angular spectrum method of plane waves (AS) are suitable and practical to
+simulate thick optical elements.
+In a concrete example of a spherical lens, we demonstrate how the multi-slice angular spectrum fails to predict geometrical parameters such as the focal length.
+We explore how more advanced methods such as the modified wave propagation method \cite{schmidt2016wave} are able to predict those properties for an 
+acceptable computational complexity. 
+
+
+\section{Theoretical basis}
+This section introduces briefly the main concepts behind the different approaches.
+For more details, please see the listed references.
+\subsection{Angular spectrum method of plane waves}
+The angular spectrum method of plane waves (AS) is a solution to the homogenous, isotropic Helmholtz equation which describes free space wave propagation
+in a medium with constant and isotropic refractive index $n$.
+The mathematical form is
+\begin{align}
+\psi_{z}&=\mathcal{F}^{-1}\left[\mathcal{F}\left[\psi_{0}\right] \cdot H_{\textrm{AS}}\right],\\
+H_{\textrm{AS}}\left(f_{x},f_{y}\right)&=\exp\left(i2\pi z\sqrt{\frac{n^2}{\lambda^{2}}-f_{x}^{2}-f_{y}^{2}}\right)
+\end{align}
+where $\psi_0$ is the incoming scalar electrical field, $\mathcal{F}$ the 2D Fourier transform, $\lambda$ the wavelength in vacuum, $z$ the propagation distance and $f_{x/y}$ the spatial frequencies in Fourier domain.
+Computationally, this can be implemented with two Fast Fourier transform (FFT) algorithms albeit circular wrap-around artifacts of the FFT should be avoided
+with the band-limited version of the AS \cite{matsushima2009band}.
+
+
+\subsection{Multi-slice}
+Multi-slice propagation (MS) is an approach to solve wave-propagation in an inhomogeneous (spatially varying refractive index) medium. 
+The angular-spectrum method can be extended to multi-slice propagation by dividing the medium into small slices along the optical axis and applying the angular spectrum method to each slice \cite{https://doi.org/10.1107/S0365110X57002194,Li_Wojcik_Jacobsen_2017}. Between each slice, the effect of the medium is 
+described as a \textit{thin medium} which allows to include the effect of the medium as a phase shift to the electrical field.
+For example, propagation through a medium $n(x,y,z)$ can be described as a series of $N_z$ AS steps $\mathcal{A}$ which corresponding phase shift in between.
+The total propagation distance $z$ is split into $\Delta z = z / N_z$ steps.
+$n_0$ is an average refractive index of the medium. and $k_0$ is the wavenumber in this medium $n_0$.
+\begin{align}
+    \psi(x,y,z) = \underbrace{\mathcal{A}\bigg[\exp\left(i k_0 n(x,y, N_z \cdot \Delta z)\mathcal{A}\big[\exp\left(i k_0 n(x,y, (N_z - 1) \cdot \Delta z) \right) \cdots \psi(x,y, 0) \big] \right) \bigg]}_{N_z \text{ times application of }\mathcal{A}} 
+\end{align}
+In \label{sec:sim} we will show that this method fails to predict geometrical properties of thick optical elements.
+The reason is, that if the medium $n$ deviates strongly from $n$, the MS applies only phase shifts to the electrical field.
+Let us do the following Gedankenexperiment that $n_0 = 1$ but $n=1.5$. If we would
+propagate a Gaussian beam through this medium, MS would only do constant phase shifts since $n$ is constant at all $(x,y,z)$. But, a constant phase shift will not change any curvature of the beam. But, the curvature change of a Gaussian beam depends on the refractive index the beam is propagating through. It can be seen as if the MS is doing a correct phase change but it's not changing the wavelength accordingly. 
+In \autoref{sec:sim} we will see how this leads to significant errors for a thick lens.
+
+\subsubsection{Modified wave propagation method}
+To overcome the shortcomings of the MS, the modified wave propagation method (MWPM) was proposed \cite{schmidt2016wave}.
+
+In integral form, the wave propagation can be written as
+\begin{align}
+\label{wpm}
+    \psi(x,y,z+\Delta z) &= \frac{1}{2\pi} \int \widetilde{\psi}(k_x, k_y, z) \, e^{ik_z(k_x, k_y, x, y) \Delta z} \, e^{i (k_x x + k_y y)} \, \mathrm{d}k_x \, \mathrm{d}k_y\\
+    k_z(k_x, k_y, x, y) &= \sqrt{k_0^2 n^2 \left( x,y,z + \frac{\Delta z}{2} \right) - k_x^2 - k_y^2}
+\end{align}
+where $\widetilde{\psi}$ is the Fourier transform of the electrical field $\psi$.
+The spatially varying $k_z(k_x, k_y, x, y)$ forbids to express \autoref{wpm} as a Fourier transform integral.
+However, the MWPM argues to express this integral as a sum of piecewise constant functions which are stitched together at regions where $n$ changes.
+This assumes there is a finite number of regions where $n$ suddenly changes such as in the case of air and lens interfaces.
+\begin{align}
+    I_m^z(x,y) &=
+    \begin{cases}
+    1 & n_z(x,y) = n_m, \\
+    0 & n_z(x,y) \ne n_m,
+    \end{cases}, \\
+    \psi(x,y,z+\Delta z) &= \sum_m I_m^z(x,y) \mathcal{F}^{-1} \left\{ e^{i k_z^m(k_x,k_y)\Delta z} \mathcal{F} \left\{\psi(x,y,z) \right\} \right\},\\
+    k_z^m(k_x, k_y) &= \sqrt{k_0^2 n_m^2 - k_x^2 - k_y^2} + \kappa(k_x, k_y).
+\end{align}
+$k_z^m$ is the wavenumber in the medium $m$.
+The MWPM can be implemented with one MS step for each medium $m$.
+
+
+\subsubsection{Hankel transform based methods}
+As the last concept we introduce a Hankel transform based wave propagation \cite{Guizar-Sicairos_Gutiérrez-Vega_2004}.
+The Hankel transform is a generalization of the Fourier transform to cylindrical coordinates. It can be used to describe the propagation of a wave through a medium with cylindrical symmetry such as a spherical lens.
+
+Let us recall that the Fourier transform can be written as
+
+\begin{equation}
+\mathcal{F}[f](k_x, k_y) = \int_{-\infty}^{\infty} F(x,y) \exp(i (k_x \cdot x + k_y \cdot y)) \,\mathrm{d}x\, \mathrm{d}y = \int_{-\infty}^{\infty} F(x,y) \exp(i \vec k \cdot \vec r) \,\mathrm{d}x\, \mathrm{d}y
+\end{equation}
+If we transform this do polar coordinates $(r, \theta)$ and $(\kappa, \phi)$ we obtain
+\begin{equation}
+\mathcal{F}[f](\kappa, \phi) = \int_{0}^{\infty} \int_{0}^{2\pi} r f(r, \theta)\cdot \exp(i \cdot \cos(\theta - \phi) \kappa r)  \,\mathrm{d}\theta\, \mathrm{d}r
+\end{equation}
+where $\kappa = \sqrt{k_x^2 + k_y^2}$ and $r=\sqrt{x^2 + y^2}$
+
+We can now use
+\begin{equation}
+\exp(i x \cdot \sin(\theta)) = \sum_{n=-\infty}^{\infty} J_n(x) \cdot \exp(i n \theta)
+\end{equation}
+where $J_n$ is the nth-order Bessel function of the first kind.
+
+After integration (if $f$ has no $\theta$ dependency) over $\theta$ it only remains
+
+\begin{equation}
+\mathcal{F}[f](\kappa, \phi) = 2\pi \int_{0}^{\infty} r \cdot f(r) \cdot J_0(\kappa \cdot r) \, \mathrm{d}r = \mathcal{H}[f](\rho)
+\end{equation}
+where $\mathcal{H}$ is the Hankel transform.
+With the Fast Hankel transform \cite{Guizar-Sicairos_Gutiérrez-Vega_2004} we can now efficiently calculate the 2D field propagation with a 1D matrix-vector-product.If required, the radial 1D field can be reconverted to cartesian coordinates. 
+
+\section{Simulation Results}
+In this part, we present our main results of the simulation study. 
+\label{sec:sim}
+
+\section{Conclusion}
+
+
+\printbibliography
+
+\end{document}
+
+
