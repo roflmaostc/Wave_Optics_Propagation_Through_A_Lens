@@ -144,6 +144,11 @@ md"""
 
 
 # 2. Thin Element Approximation
+
+!!! warn "References"
+	- J. M. Cowley and A. F. Moodie, “The Scattering of Electrons by Atoms and Crystals. I. A New Theoretical Approach,” Acta Cryst. 10 (1957)
+	- K. Li, M. Wojcik, and C. Jacobsen, “Multislice does it all—calculating the performance of nanofocusing X-ray optics,” Opt. Express 25, 1831 (2017)}
+
 If an optical field propagates through a thin medium with non-uniform refractive index, its effect on the beam can described as a multiplication.
 
 For example, a thin lens with focal length $f$ has a refractive index profile of:
@@ -485,7 +490,7 @@ $$E(x,y,z+\Delta z) = \frac{1}{2\pi} \int \widetilde{E}(k_x, k_y, z) \, e^{i k_z
 $$k_z(k_x, k_y, x, y) = \sqrt{k_0^2 n^2 \left( x,y,z + \frac{\Delta z}{2} \right) - k_x^2 - k_y^2},$$
 
 
-Most optical systems (such as a thick lens) can be splitted into homogenous regions (such as air and glass).
+Most optical systems (such as a thick lens) can be split into homogenous regions (such as air and glass).
 The key idea, use in the respective region of the medium the correct refractive index! 
 
 So for a medium with air and glass, we do the simulation two times. And then we stitch the field together.
@@ -3139,7 +3144,7 @@ version = "1.4.1+1"
 # ╟─6f7ad76b-a21c-4413-97e8-6a3b33c13a00
 # ╠═00509bfa-80af-4a4c-b246-a211d0ff1ca1
 # ╠═9bdb1c18-12d6-45c4-8048-597c1926e056
-# ╟─3f76ed4a-2c67-4d16-b6ba-a3388dd3a0c4
+# ╠═3f76ed4a-2c67-4d16-b6ba-a3388dd3a0c4
 # ╟─17a0fb88-f01f-4940-85bb-1283f0bfc74e
 # ╟─622af1b1-be09-404d-a566-0954c0ca486f
 # ╟─209d08ae-168e-48e0-a4b7-6f842c291a73
@@ -3218,7 +3223,7 @@ version = "1.4.1+1"
 # ╟─b7793022-ee9b-4883-9870-c8aef2e82e49
 # ╟─75b73720-77f0-46eb-bf4e-b9e8fbe98d64
 # ╟─a11383a2-2483-4fb6-9cf5-bd3fe06f5d1a
-# ╟─f609e529-d872-4bc0-b512-191ff3b3f4b9
+# ╠═f609e529-d872-4bc0-b512-191ff3b3f4b9
 # ╠═cef65203-91f6-4879-98b7-3419d1d98e12
 # ╠═9f5993f1-b0e1-4188-bdfc-dd2ee1acb683
 # ╠═428bb0ad-130c-41eb-a803-6f39b5003f78
