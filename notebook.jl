@@ -56,7 +56,7 @@ use_CUDA = Ref(true && CUDA.functional())
 #ImageShow.simshow(x::CuArray, kwargs...) = simshow(Array(x), kwargs...) 
 
 # ╔═╡ 57387f24-15a4-4ea8-867e-e7d524c310b4
-md"# Limits and Possibilities of the Multi Slice Propagation
+md"# Wave Optical Simulation of Thick Optical Elements
 
 [Felix Wechsler](https://www.felixwechsler.science)
 
@@ -185,7 +185,7 @@ end;
 x_box_2 = range(-40e-6, 40e-6, 513)[begin:end-1];
 
 # ╔═╡ 5503ca5c-114e-434b-ab69-37d50e09bfea
-focal_length = 150e-6
+focal_length = 200e-6
 
 # ╔═╡ ac6dcc8a-e940-490b-b697-c61bcde333ec
 box_2_lens = @. exp(-1im * 2π/ 633e-9 / 2 / focal_length * x_box_2^2) * box_2;
@@ -272,7 +272,7 @@ $$
 
 where $n$ is the refractive index, $R_i$ the radius of curvature of the two surfaces and $d$ the diameter.
 
-In this case the focal length is $25\mathrm{\mu m}$.
+In this case the focal length is $22.5\mathrm{\mu m}$.
 
 "
 
@@ -526,7 +526,8 @@ md"""
 
 # 5. Hankel Transform
 !!! warn "Reference"
-	Manuel Guizar-Sicairos and Julio C. Gutiérrez-Vega, \"Computation of quasi-discrete Hankel transforms of integer order for propagating optical wave fields,\" J. Opt. Soc. Am. A 21, 53-58 (2004) 
+	- Manuel Guizar-Sicairos and Julio C. Gutiérrez-Vega, \"Computation of quasi-discrete Hankel transforms of integer order for propagating optical wave fields,\" J. Opt. Soc. Am. A 21, 53-58 (2004) 
+	- Timothy M. Pritchett, Fast Hankel Transform Algorithms for Optical Beam Propagation, December 2001
 
 Let's recall that the Fourier transform can be written as
 
@@ -691,15 +692,16 @@ z_gauss = range(-35f-6, 10f-6, 1024);
 
 # ╔═╡ b7793022-ee9b-4883-9870-c8aef2e82e49
 begin
-	p5 = heatmap(z_gauss[:], [.- reverse(r_gauss); r_gauss], abs2.([reverse(gb_propagated[:, 2:end], dims=1); gb_propagated[:, 2:end]]).^0.2)
-	vline!(7.5f-6:7.5f-6, c=:white, title="Hankel Transform Multi Slice")
+	heatmap(z_gauss[:] .* 1e6, [.- reverse(r_gauss) .* 1e6; r_gauss .* 1e6], abs2.([reverse(gb_propagated[:, 2:end], dims=1); gb_propagated[:, 2:end]]).^0.2, title="Hankel Transform Multi Slice")
+	vline!(7.5f0:7.5f0, c=:white, label="focal length")
+	plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens")
 end
 
 # ╔═╡ 75b73720-77f0-46eb-bf4e-b9e8fbe98d64
 begin
-		heatmap(z_gauss[:], [.- reverse(r_gauss); r_gauss], abs2.([reverse(gb_propagated_wpm[:, 2:end], dims=1); gb_propagated_wpm[:, 2:end]]).^0.2, title="Hankel Transform WPM")
-		vline!(7.5f-6:7.5f-6, c=:white)
-	
+		heatmap(z_gauss[:] .* 1e6, 1e6 .* [.- reverse(r_gauss); r_gauss], abs2.([reverse(gb_propagated_wpm[:, 2:end], dims=1); gb_propagated_wpm[:, 2:end]]).^0.2, title="Hankel Transform WPM")
+		vline!(7.5f0:7.5f0, c=:white, label="focal length")
+	plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens")
 end
 
 # ╔═╡ a11383a2-2483-4fb6-9cf5-bd3fe06f5d1a
@@ -718,10 +720,11 @@ To propagate to another plane, we need two fast Hankel transform which evaluate 
 
 # ╔═╡ f609e529-d872-4bc0-b512-191ff3b3f4b9
 md"""
-## References
-- J. M. Cowley and A. F. Moodie, “The Scattering of Electrons by Atoms and Crystals. I. A New Theoretical Approach,” Acta Cryst. 10 (1957)
-- K. Li, M. Wojcik, and C. Jacobsen, “Multislice does it all—calculating the performance of nanofocusing X-ray optics,” Opt. Express 25, 1831 (2017)}
-* Timothy M. Pritchett, Fast Hankel Transform Algorithms for Optical Beam Propagation, December 2001
+# 7. Conclusion
+* Angular spectrum with multi-slice cannot reproduce the correct physical results in the case of large $\Delta n$
+* Also the multi slice angular spectrum cannot describe back reflections!
+* The wave propagation method (WPM) reproduces the correct focal length (but also no back reflection)
+* The Fast Hankel Transform results in faster numerical results but physically not superior than the WPM
 
 """
 
@@ -1084,7 +1087,9 @@ sum(result_wpm[:,:,1])
 # ╔═╡ 98f00b68-07bd-4861-a820-8de833d15444
 begin
 	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result_wpm[:, size(result_wpm, 2)÷2 +1, begin:end-1])).^0.2, grid=:white, xlabel="z in μm", ylabel="x in μm", title="WPM")
-	vline!((7.5f-6:7.5f-6) * 1e6, c=:white)
+	vline!((7.5f-6:7.5f-6) * 1e6, c=:white, label="focal length")
+	plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens")
+
 	#heatmap(Array(lens1[:, size(result_wpm, 2)÷2 +1, begin:end-1]), grid=:white)
 end
 
@@ -1097,7 +1102,9 @@ WPM_smooth, _ = plan_WPM(beam, lens_smooth, z1[:], λ, L1, n0=1f0, n_lens=n_glas
 # ╔═╡ 9615bb66-844e-4ff6-a299-4b558a9fdc01
 begin
 	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result_wpm_smooth[:, size(result_wpm, 2)÷2 +1, begin:end-1])).^0.2, grid=:white, xlabel="z in μm", ylabel="x in μm", title="WPM Smooth Lens")
-	vline!((7.5f-6:7.5f-6) * 1e6, c=:white)
+	vline!((7.5f-6:7.5f-6) * 1e6, c=:white, label="focal length")
+		plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens")
+
 	#heatmap(Array(lens1[:, size(result_wpm, 2)÷2 +1, begin:end-1]), grid=:white)
 end
 
@@ -3144,7 +3151,7 @@ version = "1.4.1+1"
 # ╟─6f7ad76b-a21c-4413-97e8-6a3b33c13a00
 # ╠═00509bfa-80af-4a4c-b246-a211d0ff1ca1
 # ╠═9bdb1c18-12d6-45c4-8048-597c1926e056
-# ╠═3f76ed4a-2c67-4d16-b6ba-a3388dd3a0c4
+# ╟─3f76ed4a-2c67-4d16-b6ba-a3388dd3a0c4
 # ╟─17a0fb88-f01f-4940-85bb-1283f0bfc74e
 # ╟─622af1b1-be09-404d-a566-0954c0ca486f
 # ╟─209d08ae-168e-48e0-a4b7-6f842c291a73
@@ -3223,7 +3230,7 @@ version = "1.4.1+1"
 # ╟─b7793022-ee9b-4883-9870-c8aef2e82e49
 # ╟─75b73720-77f0-46eb-bf4e-b9e8fbe98d64
 # ╟─a11383a2-2483-4fb6-9cf5-bd3fe06f5d1a
-# ╠═f609e529-d872-4bc0-b512-191ff3b3f4b9
+# ╟─f609e529-d872-4bc0-b512-191ff3b3f4b9
 # ╠═cef65203-91f6-4879-98b7-3419d1d98e12
 # ╠═9f5993f1-b0e1-4188-bdfc-dd2ee1acb683
 # ╠═428bb0ad-130c-41eb-a803-6f39b5003f78
