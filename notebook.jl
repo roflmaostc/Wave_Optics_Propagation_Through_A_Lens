@@ -22,6 +22,9 @@ using ImageShow, ImageIO, Plots, FFTW, CUDA,NDTools, PlutoUI, IndexFunArrays, El
 # ╔═╡ 55fc243d-b162-43fa-b755-846ab413d530
 using PlutoTeachingTools
 
+# ╔═╡ d21043fe-f1cf-4a7e-811e-b3305cb3897e
+using LaTeXStrings
+
 # ╔═╡ 1bc50357-ec6a-404a-a2b9-b8d31b153475
 md"# 0. Load packages
 On the first run, Julia is going to install some packages automatically. So start this notebook and give it some minutes (5-10min) to install all packages. 
@@ -54,6 +57,16 @@ use_CUDA = Ref(true && CUDA.functional())
 
 # ╔═╡ 6ce9a70c-0162-480a-9177-2715ff2f963a
 #ImageShow.simshow(x::CuArray, kwargs...) = simshow(Array(x), kwargs...) 
+
+# ╔═╡ 468efeeb-d9eb-4da5-93be-469a8e95cbbe
+plot_font = "Computer Modern"
+
+# ╔═╡ 2b3dc38b-1c33-4bab-8bfb-026798fd6b80
+default(fontfamily=plot_font,
+        linewidth=2, framestyle=:box, label=nothing, grid=false)
+
+# ╔═╡ 572a972e-ed4d-4527-8ad3-510f014dde19
+#scalefontsizes(1 / 1.3)
 
 # ╔═╡ 57387f24-15a4-4ea8-867e-e7d524c310b4
 md"# Wave Optical Simulation of Thick Optical Elements
@@ -134,10 +147,16 @@ begin
 end
 
 # ╔═╡ 6d3b05ba-c1c9-475b-82c8-6ffd1175f161
-heatmap(range(0, 200e-6, 200) * 1e6, x_box * 1e6, abs2.(hcat((angular_spectrum(box, 633e-9, 40e-6, z) for z in range(0, 200e-6, 200))...)).^0.6, xlabel="z in μm", ylabel="x in μm")
+heatmap(range(0, 200e-6, 200) * 1e6, x_box * 1e6, abs2.(hcat((angular_spectrum(box, 633e-9, 40e-6, z) for z in range(0, 200e-6, 200))...)).^0.4, xlabel=L"\textrm{z~in~} \mathrm{\mu m}", ylabel=L"\textrm{x~in}~\mathrm{\mu m}")
 
-# ╔═╡ d259a222-bdd1-4af1-8a32-be942551dc77
+# ╔═╡ cef956cb-9567-4f3b-bee1-75838abc9231
 
+
+# ╔═╡ 05a36c1d-d925-4e93-b19a-5915f6aec23e
+
+
+# ╔═╡ ac3b1bc2-18f6-44b8-8d7a-c0badb790580
+L"\textrm{Hi haha} 1+1 \mu"
 
 # ╔═╡ 185ac123-226f-443c-9882-c758677c120a
 md"""
@@ -185,19 +204,13 @@ end;
 x_box_2 = range(-40e-6, 40e-6, 513)[begin:end-1];
 
 # ╔═╡ 5503ca5c-114e-434b-ab69-37d50e09bfea
-focal_length = 200e-6
+focal_length = 150e-6
 
 # ╔═╡ ac6dcc8a-e940-490b-b697-c61bcde333ec
 box_2_lens = @. exp(-1im * 2π/ 633e-9 / 2 / focal_length * x_box_2^2) * box_2;
 
 # ╔═╡ 6f7ad76b-a21c-4413-97e8-6a3b33c13a00
-heatmap(range(0, 200e-6, 200) * 1e6, x_box_2 * 1e6, abs2.(hcat((angular_spectrum(box_2_lens, 633e-9, 80e-6, z) for z in range(0, 200e-6, 200))...)).^0.5, xlabel="z in μm", ylabel="x in μm")
-
-# ╔═╡ 00509bfa-80af-4a4c-b246-a211d0ff1ca1
-
-
-# ╔═╡ 9bdb1c18-12d6-45c4-8048-597c1926e056
-
+heatmap(range(0, 200e-6, 200) * 1e6, x_box_2 * 1e6, abs2.(hcat((angular_spectrum(box_2_lens, 633e-9, 80e-6, z) for z in range(0, 200e-6, 200))...)).^0.5, xlabel=L"\textrm{z~in~} \mathrm{\mu m}", ylabel=L"\textrm{x~in}~\mathrm{\mu m}")
 
 # ╔═╡ 3f76ed4a-2c67-4d16-b6ba-a3388dd3a0c4
 md"""
@@ -223,6 +236,9 @@ N1 = 1024
 
 # ╔═╡ 97f4e89f-b946-41a8-bfa8-b5325580e143
 L1 = 60f-6
+
+# ╔═╡ 3c5e99f0-18c6-420a-8b87-feb4408a9eb1
+L1 / N1
 
 # ╔═╡ bdae79e7-5976-4a2e-b3da-be809d8de95f
 Nz1 = 512
@@ -371,15 +387,6 @@ heatmap(Array(z1[:]) * 1e6, Array(x1[:]) * 1e6, lens_smooth[ix3, :, :], title="S
 # ╔═╡ d03c9dbc-ca0a-467e-8efa-cd9dbbde07b9
 md"## 5. Multi Slice with Smooth Boundary Lens"
 
-# ╔═╡ c8a79512-a89d-4d0a-870f-51d28b794c86
-
-
-# ╔═╡ b90bfc22-8e14-4220-8829-fc22abe45bfe
-
-
-# ╔═╡ fea61f95-2fdb-49b0-b0ab-8160d5de3ef9
-
-
 # ╔═╡ 8b99a4f8-7747-46a0-839f-76e83109e5dd
 md"""## 6. Systematic Error of the Multi Slice Approach
 This seems to be a systematic error of the Multi Slice approach?
@@ -432,8 +439,8 @@ gauss_1D_10 = multi_slice_1D(gauss_1D, 633e-9, 40e-6, z_1D, medium_10);
 
 # ╔═╡ 6c3c59bf-83da-4c28-a41c-227fbf7982cd
 begin
-	p1 = heatmap(z_1D * 1e6, x_box * 1e6, abs2.(gauss_1D_15)[:, begin:end-1].^0.2, xlabel="z in μm", ylabel="x in μm", title="n=1.0")
-	p2 = heatmap(z_1D * 1e6, x_box * 1e6, abs2.(gauss_1D_10)[:, begin:end-1].^0.2, xlabel="z in μm", ylabel="x in μm", title="n=1.5")
+	p1 = heatmap(z_1D * 1e6, x_box * 1e6, abs2.(gauss_1D_15)[:, begin:end-1].^0.2, xlabel=L"\textrm{z~in~} \mathrm{\mu m}", ylabel=L"\textrm{x~in}~\mathrm{\mu m}", title="n=1.0")
+	p2 = heatmap(z_1D * 1e6, x_box * 1e6, abs2.(gauss_1D_10)[:, begin:end-1].^0.2, xlabel=L"\textrm{z~in~} \mathrm{\mu m}", ylabel=L"\textrm{x~in}~\mathrm{\mu m}", title="n=1.5")
 	
 	plot(p1, p2, layout=(1,2))
 end
@@ -466,13 +473,10 @@ If we do so, the correct result will be obtained.
 
 # ╔═╡ 13114099-4e02-496f-9f25-9a136ecd107a
 begin
-	heatmap(z_1D * 1e6, x_box * 1e6, abs2.(gauss_1D_15_2)[:, begin:end-1].^1, xlabel="z in μm", ylabel="x in μm", title="Gaussian Beam correct")
+	heatmap(z_1D * 1e6, x_box * 1e6, abs2.(gauss_1D_15_2)[:, begin:end-1].^1, xlabel=L"\textrm{z~in~} \mathrm{\mu m}", ylabel=L"\textrm{x~in}~\mathrm{\mu m}", title="Gaussian Beam correct")
 	plot!(z_1D * 1e6, @. 1e6 * 2e-6 * sqrt(1 + (z_1D / (π * 2e-6^2 * 1.5 / 633e-9))^2))
 	plot!(z_1D * 1e6, @. -1e6 * 2e-6 * sqrt(1 + (z_1D / (π * 2e-6^2 * 1.5 / 633e-9))^2))
 end
-
-# ╔═╡ 99def499-4fcb-47a1-8c0c-3f26400707ba
-
 
 # ╔═╡ f44cc074-3f93-4f0a-a584-6788215c5754
 md"""# 4. Wave Propagation Method
@@ -517,9 +521,6 @@ md" ## Results
 In this case, the correct focal length (white line) is reproduced correctly.
 
 "
-
-# ╔═╡ da8af402-f368-41d5-99ad-7ccddd6b035e
-
 
 # ╔═╡ d5c38a9c-9f98-4888-a5e5-1b61c99a17a3
 md"""
@@ -602,6 +603,9 @@ function qdht(f, _p, R::T, N) where T
 	
 	return ν̄, r̄, fwd, fwd_arr, bwd
 end
+
+# ╔═╡ 8a0ac477-a3c8-4944-a75a-45af5d712c22
+
 
 # ╔═╡ 5e6ed976-1a80-4a85-bfc9-20d7936db26a
 function radial_prop(f_input, z, λ::T, L, f_refractive_index; N=256, n0=T(1)) where T
@@ -692,15 +696,15 @@ z_gauss = range(-35f-6, 10f-6, 1024);
 
 # ╔═╡ b7793022-ee9b-4883-9870-c8aef2e82e49
 begin
-	heatmap(z_gauss[:] .* 1e6, [.- reverse(r_gauss) .* 1e6; r_gauss .* 1e6], abs2.([reverse(gb_propagated[:, 2:end], dims=1); gb_propagated[:, 2:end]]).^0.2, title="Hankel Transform Multi Slice")
-	vline!(7.5f0:7.5f0, c=:white, label="focal length")
+	heatmap(z_gauss[:] .* 1e6, [.- reverse(r_gauss) .* 1e6; r_gauss .* 1e6], abs2.([reverse(gb_propagated[:, 2:end], dims=1); gb_propagated[:, 2:end]]).^0.2, xlabel=L"\textrm{z~in~} \mathrm{\mu m}", ylabel=L"\textrm{x~in}~\mathrm{\mu m}",title="Hankel Transform Multi Slice")
+	vline!(7.5f0:7.5f0, c=:yellow, label="focal length", xlim=(-35, 10), ylim=(-30, 30))
 	plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens")
 end
 
 # ╔═╡ 75b73720-77f0-46eb-bf4e-b9e8fbe98d64
 begin
-		heatmap(z_gauss[:] .* 1e6, 1e6 .* [.- reverse(r_gauss); r_gauss], abs2.([reverse(gb_propagated_wpm[:, 2:end], dims=1); gb_propagated_wpm[:, 2:end]]).^0.2, title="Hankel Transform WPM")
-		vline!(7.5f0:7.5f0, c=:white, label="focal length")
+		heatmap(z_gauss[:] .* 1e6, 1e6 .* [.- reverse(r_gauss); r_gauss], abs2.([reverse(gb_propagated_wpm[:, 2:end], dims=1); gb_propagated_wpm[:, 2:end]]).^0.2, title="Hankel Transform MWPM",xlabel=L"\textrm{z~in~} \mathrm{\mu m}", ylabel=L"\textrm{x~in}~\mathrm{\mu m}")
+		vline!(7.5f0:7.5f0, c=:yellow, label="focal length", xlim=(-35, 10), ylim=(-30, 30))
 	plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens")
 end
 
@@ -727,24 +731,6 @@ md"""
 * The Fast Hankel Transform results in faster numerical results but physically not superior than the WPM
 
 """
-
-# ╔═╡ cef65203-91f6-4879-98b7-3419d1d98e12
-
-
-# ╔═╡ 9f5993f1-b0e1-4188-bdfc-dd2ee1acb683
-
-
-# ╔═╡ 428bb0ad-130c-41eb-a803-6f39b5003f78
-
-
-# ╔═╡ 56a972e3-a5a7-40b3-941e-55f9124e6df0
-
-
-# ╔═╡ 78c50adc-c698-4f12-a6f8-203787491e2f
-
-
-# ╔═╡ 00cf9018-e9e3-42a4-b264-190e5e1abe99
-
 
 # ╔═╡ 1961dc92-6b90-4f5f-a3b6-f5862fa00478
 md"# Utility functions"
@@ -980,11 +966,10 @@ MS, H = plan_multi_slice(beam, lens1, z1[:], λ, L1, n0=1.f0)
 
 # ╔═╡ 611a6aba-1c2f-4c05-ae36-3c646fdaedc4
 begin
-	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result[:, size(result, 2)÷2 + 1, begin:end-1])).^0.2, grid=:white, xlabel="z in μm", ylabel="x in μm")
-	vline!((7.5f-6:7.5f-6) * 1e6, c=:white, label="real focus")
+	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result[:, size(result, 2)÷2 + 1, begin:end-1])).^0.2, grid=:white, xlabel=L"\textrm{z~in~} \mathrm{\mu m}", ylabel=L"\textrm{x~in}~\mathrm{\mu m}")
+	vline!((7.5f-6:7.5f-6) * 1e6, c=:yellow, label="focal length")
 	#heatmap(Array(z1)[begin:end-1], Array(x1)[:], Array(lens1[:, 257, begin:end-1]), grid=:white)
-	plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens")
-
+	plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens", xlim=(-35, 10), ylim=(-30, 30), title="MS Hard Lens")
 end
 
 # ╔═╡ 150cae90-4709-4adc-9933-d2bd073d49a2
@@ -996,9 +981,9 @@ MS_smooth, _ = plan_multi_slice(beam, (lens_smooth), z1[:], λ, L1, n0=1.0f0)
 # ╔═╡ 7b5d3741-1f0f-42f1-9aba-24d5b3630a9b
 begin
 	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result_smooth[:, size(result_smooth, 2)÷2 + 1, begin:end-1])).^0.2, grid=:white)
-	vline!(7.5:7.5, c=:white, xlabel="z in μm", ylabel="x in μm", label="real focus")
+	vline!(7.5:7.5, c=:yellow, xlabel=L"\textrm{z~in~} \mathrm{\mu m}", ylabel=L"\textrm{x~in}~\mathrm{\mu m}", label="focal length")
 	#heatmap(Array(z1)[begin:end-1], Array(x1)[:], Array(lens1[:, 257, begin:end-1]), grid=:white)
-	plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens")
+	plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens", xlim=(-35, 10), ylim=(-30, 30), title="MS Smooth Lens")
 end
 
 # ╔═╡ 6fd65d63-65c9-4bc9-8259-376387e0b69d
@@ -1086,9 +1071,9 @@ sum(result_wpm[:,:,1])
 
 # ╔═╡ 98f00b68-07bd-4861-a820-8de833d15444
 begin
-	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result_wpm[:, size(result_wpm, 2)÷2 +1, begin:end-1])).^0.2, grid=:white, xlabel="z in μm", ylabel="x in μm", title="WPM")
-	vline!((7.5f-6:7.5f-6) * 1e6, c=:white, label="focal length")
-	plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens")
+	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result_wpm[:, size(result_wpm, 2)÷2 +1, begin:end-1])).^0.2, grid=:white, xlabel=L"\textrm{z~in~} \mathrm{\mu m}", ylabel=L"\textrm{x~in}~\mathrm{\mu m}", title="MWPM Hard Lens")
+	vline!((7.5f-6:7.5f-6) * 1e6, c=:yellow, label="focal length")
+	plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens", xlim=(-35, 10), ylim=(-30, 30))
 
 	#heatmap(Array(lens1[:, size(result_wpm, 2)÷2 +1, begin:end-1]), grid=:white)
 end
@@ -1101,9 +1086,9 @@ WPM_smooth, _ = plan_WPM(beam, lens_smooth, z1[:], λ, L1, n0=1f0, n_lens=n_glas
 
 # ╔═╡ 9615bb66-844e-4ff6-a299-4b558a9fdc01
 begin
-	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result_wpm_smooth[:, size(result_wpm, 2)÷2 +1, begin:end-1])).^0.2, grid=:white, xlabel="z in μm", ylabel="x in μm", title="WPM Smooth Lens")
-	vline!((7.5f-6:7.5f-6) * 1e6, c=:white, label="focal length")
-		plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens")
+	heatmap(Array(z1)[:] * 1e6, Array(x1)[:] * 1e6, Array(abs2.(result_wpm_smooth[:, size(result_wpm, 2)÷2 +1, begin:end-1])).^0.2, grid=:white, xlabel=L"\textrm{z~in~} \mathrm{\mu m}", ylabel=L"\textrm{x~in}~\mathrm{\mu m}", title="MWPM Smooth Lens")
+	vline!((7.5f-6:7.5f-6) * 1e6, c=:yellow, label="focal length")
+		plot!(sin.(0:0.01:2π) .* 15 .- 15 , cos.(0:0.01:2π) .* 15, label="lens",  xlim=(-35, 10), ylim=(-30, 30))
 
 	#heatmap(Array(lens1[:, size(result_wpm, 2)÷2 +1, begin:end-1]), grid=:white)
 end
@@ -1119,6 +1104,7 @@ FunctionZeros = "b21f74c0-b399-568f-9643-d20f4fa2c814"
 ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
 ImageShow = "4e3cecfd-b093-5904-9786-8bbb286a6a31"
 IndexFunArrays = "613c443e-d742-454e-bfc6-1d7f8dd76566"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 NDTools = "98581153-e998-4eef-8d0d-5ec2c052313d"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
@@ -1134,6 +1120,7 @@ FunctionZeros = "~1.0.0"
 ImageIO = "~0.6.9"
 ImageShow = "~0.3.8"
 IndexFunArrays = "~0.2.7"
+LaTeXStrings = "~1.4.0"
 NDTools = "~0.7.0"
 Plots = "~1.40.8"
 PlutoTeachingTools = "~0.3.1"
@@ -1147,7 +1134,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "4a1ac22c9a98c10d94ee494a08df2cd25d5d8601"
+project_hash = "c4376d0ce1ff110adf0c24b0adf85e2b2d819c31"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -3130,6 +3117,10 @@ version = "1.4.1+1"
 # ╠═f4fa6dab-d64f-46be-9f13-6cccbf50400a
 # ╠═00b13143-d9bd-402f-858c-0270a012a61f
 # ╠═6ce9a70c-0162-480a-9177-2715ff2f963a
+# ╠═468efeeb-d9eb-4da5-93be-469a8e95cbbe
+# ╠═d21043fe-f1cf-4a7e-811e-b3305cb3897e
+# ╠═2b3dc38b-1c33-4bab-8bfb-026798fd6b80
+# ╠═572a972e-ed4d-4527-8ad3-510f014dde19
 # ╟─57387f24-15a4-4ea8-867e-e7d524c310b4
 # ╟─443840db-b308-4202-b47d-7a96779f6648
 # ╟─d09a7268-e3f6-4ced-8cca-24b718895c19
@@ -3141,7 +3132,9 @@ version = "1.4.1+1"
 # ╟─377246ab-19ba-4636-b527-83deac269574
 # ╟─2d4d4582-65cf-48fa-b369-a808627feb6a
 # ╟─6d3b05ba-c1c9-475b-82c8-6ffd1175f161
-# ╠═d259a222-bdd1-4af1-8a32-be942551dc77
+# ╠═cef956cb-9567-4f3b-bee1-75838abc9231
+# ╠═05a36c1d-d925-4e93-b19a-5915f6aec23e
+# ╠═ac3b1bc2-18f6-44b8-8d7a-c0badb790580
 # ╟─185ac123-226f-443c-9882-c758677c120a
 # ╟─7b6a90ce-c32d-495d-b642-2f5baa7c3e05
 # ╠═5bc6b3ae-29d5-4df7-8f35-2154ca0ef34b
@@ -3149,8 +3142,6 @@ version = "1.4.1+1"
 # ╠═5503ca5c-114e-434b-ab69-37d50e09bfea
 # ╠═ac6dcc8a-e940-490b-b697-c61bcde333ec
 # ╟─6f7ad76b-a21c-4413-97e8-6a3b33c13a00
-# ╠═00509bfa-80af-4a4c-b246-a211d0ff1ca1
-# ╠═9bdb1c18-12d6-45c4-8048-597c1926e056
 # ╟─3f76ed4a-2c67-4d16-b6ba-a3388dd3a0c4
 # ╟─17a0fb88-f01f-4940-85bb-1283f0bfc74e
 # ╟─622af1b1-be09-404d-a566-0954c0ca486f
@@ -3158,6 +3149,7 @@ version = "1.4.1+1"
 # ╟─8e798c1d-9386-4446-bb12-11d0a7de0277
 # ╠═1397b1f7-599b-4df5-ad4d-8f626e527a26
 # ╠═97f4e89f-b946-41a8-bfa8-b5325580e143
+# ╠═3c5e99f0-18c6-420a-8b87-feb4408a9eb1
 # ╠═bdae79e7-5976-4a2e-b3da-be809d8de95f
 # ╠═fe605fa6-b394-4531-8fff-93d7e755e8bb
 # ╠═ca49b92f-b376-47a0-ab7b-b390eaa15bdf
@@ -3189,9 +3181,6 @@ version = "1.4.1+1"
 # ╠═150cae90-4709-4adc-9933-d2bd073d49a2
 # ╠═2155a928-59e5-42b5-b98c-c83133260b18
 # ╟─7b5d3741-1f0f-42f1-9aba-24d5b3630a9b
-# ╠═c8a79512-a89d-4d0a-870f-51d28b794c86
-# ╠═b90bfc22-8e14-4220-8829-fc22abe45bfe
-# ╠═fea61f95-2fdb-49b0-b0ab-8160d5de3ef9
 # ╟─8b99a4f8-7747-46a0-839f-76e83109e5dd
 # ╠═79c34154-2bbd-4056-9aa0-5574ec54e702
 # ╠═4c237907-c679-4ae2-b570-d4de519aaebf
@@ -3205,7 +3194,6 @@ version = "1.4.1+1"
 # ╟─32007718-eaba-4bb9-8933-7ed836832a23
 # ╟─984a6719-c67d-494e-b6ca-537d81decd7c
 # ╟─13114099-4e02-496f-9f25-9a136ecd107a
-# ╠═99def499-4fcb-47a1-8c0c-3f26400707ba
 # ╟─f44cc074-3f93-4f0a-a584-6788215c5754
 # ╟─6fd65d63-65c9-4bc9-8259-376387e0b69d
 # ╠═ec4a4ae1-b201-4e1c-bbc0-16f47813240e
@@ -3216,10 +3204,10 @@ version = "1.4.1+1"
 # ╟─24b316a9-fb50-4247-b160-03e6c14e830b
 # ╟─98f00b68-07bd-4861-a820-8de833d15444
 # ╟─9615bb66-844e-4ff6-a299-4b558a9fdc01
-# ╠═da8af402-f368-41d5-99ad-7ccddd6b035e
 # ╟─d5c38a9c-9f98-4888-a5e5-1b61c99a17a3
 # ╟─3df428e4-6b40-4602-a1fe-ac0ef7ea3401
 # ╠═7475d1bc-4a84-4d8a-99ff-67287ca4760b
+# ╠═8a0ac477-a3c8-4944-a75a-45af5d712c22
 # ╠═5e6ed976-1a80-4a85-bfc9-20d7936db26a
 # ╠═3833ba9e-f6a1-4e60-bfa7-6e52e83fb5da
 # ╠═c165b464-b470-4e03-bdb1-05b70a24e9b9
@@ -3231,12 +3219,6 @@ version = "1.4.1+1"
 # ╟─75b73720-77f0-46eb-bf4e-b9e8fbe98d64
 # ╟─a11383a2-2483-4fb6-9cf5-bd3fe06f5d1a
 # ╟─f609e529-d872-4bc0-b512-191ff3b3f4b9
-# ╠═cef65203-91f6-4879-98b7-3419d1d98e12
-# ╠═9f5993f1-b0e1-4188-bdfc-dd2ee1acb683
-# ╠═428bb0ad-130c-41eb-a803-6f39b5003f78
-# ╠═56a972e3-a5a7-40b3-941e-55f9124e6df0
-# ╠═78c50adc-c698-4f12-a6f8-203787491e2f
-# ╠═00cf9018-e9e3-42a4-b264-190e5e1abe99
 # ╟─1961dc92-6b90-4f5f-a3b6-f5862fa00478
 # ╟─58a545b3-a5f5-4ed6-8132-6f1384882aa6
 # ╟─f101181f-e10b-41a6-bb31-2476ac2257af
