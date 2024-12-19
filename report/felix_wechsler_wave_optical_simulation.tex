@@ -15,7 +15,7 @@
 \usepackage{hyperref} % For hyperlinks (optional)
 \usepackage{subcaption}
 \usepackage{siunitx}
-
+\usepackage{here}
 \usepackage[
     backend=biber,
     sorting=none,
@@ -133,7 +133,7 @@ After integration (if $f$ has no $\theta$ dependency) over $\theta$ it only rema
 \mathcal{F}[f](\kappa, \phi) = 2\pi \int_{0}^{\infty} r \cdot f(r) \cdot J_0(\kappa \cdot r) \, \mathrm{d}r = \mathcal{H}[f](\rho)
 \end{equation}
 where $\mathcal{H}$ is the Hankel transform.
-With the Fast Hankel transform \cite{Guizar-Sicairos_Gutiérrez-Vega_2004} we can now efficiently calculate the 2D field propagation with a 1D matrix-vector-product.If required, the radial 1D field can be reconverted to cartesian coordinates. 
+With the Fast Hankel transform \cite{Guizar-Sicairos_Gutiérrez-Vega_2004} we can now efficiently calculate the 2D field propagation with a 1D matrix-vector-product. If required, the radial 1D field can be reconverted to cartesian coordinates. 
 
 \section{Simulation Results}
 \label{sec:sim}
@@ -142,8 +142,8 @@ In all three figures in this section, we show the propagated intensity of the in
 Also, we distinguish between \textit{hard lens} and \textit{smooth lens}. The first one is a binary discretization of the refractive index array with either 1 or 1.5. The latter is a smooth discretization of the lens where voxels on the boundary have the weighted sum of $n=1$ and $n=1.5$ according to the volume of this voxel being inside of the lens.
 
 \subsection{Multi-slice propagation}
-As we see in \autoref{fig:MS}, the MS is able to focus the light. However, the yellow line indicates the focal length of the ball lens derived with the thick lensmaker equation. There is a significant deviation from the simulated and the real focal length.
-\begin{figure}[h]
+As we see in \autoref{fig:MS}, the MS is able to focus the light. However, the yellow line indicates the focal length of the ball lens derived with the thick lensmaker equation. There is a significant deviation from the simulated and the real focal length. A similar effect has been observed in literature too \cite{schmidt2016wave} though their matrix based beam propagation method overestimates the focal length.
+\begin{figure}[H]
     \centering
     \begin{subfigure}[]{0.5\textwidth}
         \centering
@@ -156,13 +156,13 @@ As we see in \autoref{fig:MS}, the MS is able to focus the light. However, the y
     \caption{Results of the MS simulation.}
     \label{fig:MS}
 \end{figure}
-We believe, this is due to the aforementioned mistake of the MS that the propagation kernel inside the glass medium is systematically wrong.
-We see, that the smooth lens discretization removes some minor artefacts which are visible at the entrance of the lens at around $z=\SI{-30}{\micro\meter}$.
+We believe the underestimation stems from the aforementioned mistake of the MS that the propagation kernel inside the glass medium is systematically wrong. The MS applies correct phase shifts but it neglects the $\lambda$ is also changing in that medium.
+Also, we see that the smooth lens discretization removes some minor artefacts which are visible at the entrance of the lens at around $z=\SI{-30}{\micro\meter}$.
 The number of samples is $N_{x,y} = 1024$ and $N_z=512$. On a Intel Core Ultra 7 155U with Julia 1.11 the simulation took around \SI{200}{\second}.
 
 \subsection{Modified wave propagation method}
 The MWPM as proposed by \cite{schmidt2016wave} produces matching results for the focal length. If we use the smooth lens discretization we obtain a very \textit{good looking} intensity without obvious artefacts.
-\begin{figure}[h]
+\begin{figure}[H]
     \centering
     \begin{subfigure}[]{0.5\textwidth}
         \centering
@@ -175,12 +175,12 @@ The MWPM as proposed by \cite{schmidt2016wave} produces matching results for the
     \caption{}
     \label{fig:}
 \end{figure}
-
+This matches well with rigorous solutions of Maxwell's equation in literature. 
 
 \subsection{Hankel transform based methods}
-As the Hankel transform method is mathematically identical to the FFT based method for a circular symmetric case, the results are visual identical.
+As the Hankel transform method is mathematically identical to the FFT based method for a circular symmetric case, the results are visually identical.
 However, due to the reduced computational load (from the 2D to 1D reduction), we can simulate $N_{x,y} = 2048$ and $N_z=1024$ and still obtain a calculation time of only $\SI{7}{\second}$. 
-\begin{figure}[h]
+\begin{figure}[H]
     \centering
     \begin{subfigure}[]{0.5\textwidth}
         \centering
