@@ -3,8 +3,8 @@
 
 % Set small borders with the geometry package
 \geometry{
-  top=3cm,     % Top margin
-  bottom=3cm,  % Bottom margin
+  top=2cm,     % Top margin
+  bottom=2cm,  % Bottom margin
   left=2.5cm,    % Left margin
   right=2.5cm,   % Right margin
 }
@@ -13,7 +13,8 @@
 \usepackage{amsfonts} % For extra fonts
 \usepackage{graphicx} % For including graphics
 \usepackage{hyperref} % For hyperlinks (optional)
-
+\usepackage{subcaption}
+\usepackage{siunitx}
 
 \usepackage[
     backend=biber,
@@ -34,16 +35,17 @@
 \thispagestyle{empty}
 
 \begin{abstract}
-In this proposal, we outline our approach to simulating optical lenses using a wave optics framework. We aim to apply and compare various methods for accurately modeling wave propagation through thick lenses, evaluating each method's performance.
+In this article, we outline our approach on simulating optical lenses using a wave optics framework. 
+We aim to apply and compare various methods for accurately modeling wave propagation through a thick lens, evaluating each method's performance.
 \end{abstract}
 
 
 \section{Introduction}
-Ray optical tools are standard tools to characterize optical elements. However, going to smaller scales the wave nature of light is not negligible.
-In this work, we study if simple wave optical algorithms such as the angular spectrum method of plane waves (AS) are suitable and practical to
+Ray optical tools are standard tools to characterize optical elements. However, working on smaller scales the wave nature of light is not negligible.
+In this work, we study if simple wave optical algorithms such as the angular spectrum method of plane waves (AS) are suitable to
 simulate thick optical elements.
-In a concrete example of a spherical lens, we demonstrate how the multi-slice angular spectrum fails to predict geometrical parameters such as the focal length.
-We explore how more advanced methods such as the modified wave propagation method \cite{schmidt2016wave} are able to predict those properties for an 
+In a concrete example of a spherical lens, we demonstrate how the multi-slice angular spectrum method fails to predict geometrical parameters such as the focal length correctly.
+We explore how more advanced methods such as the modified wave propagation method \cite{schmidt2016wave} are able to predict those properties at an 
 acceptable computational complexity. 
 
 
@@ -69,15 +71,14 @@ The angular-spectrum method can be extended to multi-slice propagation by dividi
 described as a \textit{thin medium} which allows to include the effect of the medium as a phase shift to the electrical field.
 For example, propagation through a medium $n(x,y,z)$ can be described as a series of $N_z$ AS steps $\mathcal{A}$ which corresponding phase shift in between.
 The total propagation distance $z$ is split into $\Delta z = z / N_z$ steps.
-$n_0$ is an average refractive index of the medium. and $k_0$ is the wavenumber in this medium $n_0$.
+$n_0$ is an average refractive index of the medium. and $k_0$ is the wavenumber in this medium $n_0$. It can be written as
 \begin{align}
-    \psi(x,y,z) = \underbrace{\mathcal{A}\bigg[\exp\left(i k_0 n(x,y, N_z \cdot \Delta z)\mathcal{A}\big[\exp\left(i k_0 n(x,y, (N_z - 1) \cdot \Delta z) \right) \cdots \psi(x,y, 0) \big] \right) \bigg]}_{N_z \text{ times application of }\mathcal{A}} 
+    \psi(x,y,z) = \underbrace{\mathcal{A}\bigg[\exp\left(i k_0 n(x,y, N_z \cdot \Delta z)\mathcal{A}\big[\exp\left(i k_0 n(x,y, (N_z - 1) \cdot \Delta z) \right) \cdots \psi(x,y, 0) \big] \right) \bigg]}_{N_z \text{ times application of }\mathcal{A}}. 
 \end{align}
-In \label{sec:sim} we will show that this method fails to predict geometrical properties of thick optical elements.
-The reason is, that if the medium $n$ deviates strongly from $n$, the MS applies only phase shifts to the electrical field.
-Let us do the following Gedankenexperiment that $n_0 = 1$ but $n=1.5$. If we would
-propagate a Gaussian beam through this medium, MS would only do constant phase shifts since $n$ is constant at all $(x,y,z)$. But, a constant phase shift will not change any curvature of the beam. But, the curvature change of a Gaussian beam depends on the refractive index the beam is propagating through. It can be seen as if the MS is doing a correct phase change but it's not changing the wavelength accordingly. 
-In \autoref{sec:sim} we will see how this leads to significant errors for a thick lens.
+In \autoref{sec:sim} we show that this method fails to predict geometrical properties of thick optical elements.
+The reason is, that if the mediums refractive index deviates from $n$, the MS applies only phase shifts to the electrical field which neglects the actual wavelength change.
+Let us do the following Gedankenexperiment that $n_0 = 1$ but the medium in fact has a constant refractive index of $n=1.5$. If we would
+propagate a Gaussian beam through this medium, MS would only do constant phase shifts since $n$ is constant at all $(x,y,z)$. But, a constant phase shift will not change any curvature of the beam. But, the curvature change of a Gaussian beam depends on the refractive index the beam is propagating through. It can be seen as if the MS is doing a correct phase change but it is not changing the wavelength accordingly. 
 
 \subsubsection{Modified wave propagation method}
 To overcome the shortcomings of the MS, the modified wave propagation method (MWPM) was proposed \cite{schmidt2016wave}.
@@ -103,7 +104,7 @@ This assumes there is a finite number of regions where $n$ suddenly changes such
 \end{align}
 $k_z^m$ is the wavenumber in the medium $m$.
 The MWPM can be implemented with one MS step for each medium $m$.
-
+Qualitatively, it resolves the issue of the MS to not use the correct diffraction kernel of the respective medium. If the medium is piecewise constant, the MPWM can be applied to the cost of one AS step for each medium.
 
 \subsubsection{Hankel transform based methods}
 As the last concept we introduce a Hankel transform based wave propagation \cite{Guizar-Sicairos_Gutiérrez-Vega_2004}.
@@ -135,11 +136,73 @@ where $\mathcal{H}$ is the Hankel transform.
 With the Fast Hankel transform \cite{Guizar-Sicairos_Gutiérrez-Vega_2004} we can now efficiently calculate the 2D field propagation with a 1D matrix-vector-product.If required, the radial 1D field can be reconverted to cartesian coordinates. 
 
 \section{Simulation Results}
-In this part, we present our main results of the simulation study. 
 \label{sec:sim}
+In this part, we present our main results of the simulation study. For all details of the simulation, please see the supplemental source code.
+In all three figures in this section, we show the propagated intensity of the incoming Gaussian beam of waist radius \SI{15}{\micro\meter} and $\lambda=\SI{633}{\nano\meter}$. The images are shown with a gamma factor of $0.2$ to increase visibility of low intensity regimes. The green lines always indicate the physical location of a glass ball with refractive index of $1.5$ which is embedded in air with $n=1$.
+Also, we distinguish between \textit{hard lens} and \textit{smooth lens}. The first one is a binary discretization of the refractive index array with either 1 or 1.5. The latter is a smooth discretization of the lens where voxels on the boundary have the weighted sum of $n=1$ and $n=1.5$ according to the volume of this voxel being inside of the lens.
+
+\subsection{Multi-slice propagation}
+As we see in \autoref{fig:MS}, the MS is able to focus the light. However, the yellow line indicates the focal length of the ball lens derived with the thick lensmaker equation. There is a significant deviation from the simulated and the real focal length.
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}[]{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../figures/MS_hard.svg.png} 
+    \end{subfigure}%
+    \begin{subfigure}[]{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../figures/MS_soft.svg.png} 
+    \end{subfigure}
+    \caption{Results of the MS simulation.}
+    \label{fig:MS}
+\end{figure}
+We believe, this is due to the aforementioned mistake of the MS that the propagation kernel inside the glass medium is systematically wrong.
+We see, that the smooth lens discretization removes some minor artefacts which are visible at the entrance of the lens at around $z=\SI{-30}{\micro\meter}$.
+The number of samples is $N_{x,y} = 1024$ and $N_z=512$. On a Intel Core Ultra 7 155U with Julia 1.11 the simulation took around \SI{200}{\second}.
+
+\subsection{Modified wave propagation method}
+The MWPM as proposed by \cite{schmidt2016wave} produces matching results for the focal length. If we use the smooth lens discretization we obtain a very \textit{good looking} intensity without obvious artefacts.
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}[]{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../figures/MWPM_hard.svg.png} 
+    \end{subfigure}%
+    \begin{subfigure}[]{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../figures/MWPM_soft.svg.png} 
+    \end{subfigure}
+    \caption{}
+    \label{fig:}
+\end{figure}
+
+
+\subsection{Hankel transform based methods}
+As the Hankel transform method is mathematically identical to the FFT based method for a circular symmetric case, the results are visual identical.
+However, due to the reduced computational load (from the 2D to 1D reduction), we can simulate $N_{x,y} = 2048$ and $N_z=1024$ and still obtain a calculation time of only $\SI{7}{\second}$. 
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}[]{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../figures/Hankel_normal.svg.png} 
+    \end{subfigure}%
+    \begin{subfigure}[]{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../figures/Hankel_MWPM.svg.png} 
+    \end{subfigure}
+    \caption{}
+    \label{fig:}
+\end{figure}
+This significant decrease in computational time makes it an attractive candidate
+to simulate circularly symmetric optical systems more efficiently.
+
+
 
 \section{Conclusion}
-
+As a conclusion, we demonstrated that the MS fails to solve the homogeneous Helmholtz equation. For the example of a thick lens it produces 
+a strong deviation from the geometrically derived focal length. The Hankel transform based method underlies the same physical mechanism and hence
+suffers from the exact same problem.
+However, the MWPM is able to reproduce the right focal length for the thick lens and compared with literature it matches well with the results of rigorous Maxwell solver.
 
 \printbibliography
 
