@@ -532,7 +532,7 @@ md"""
 
 Let's recall that the Fourier transform can be written as
 
-$$\mathcal{F}[f](k_x, k_y) = \int_{-\infty}^{\infty} F(x,y) \exp(i (k_x \cdot x + k_y \cdot y)) \,\mathrm{d}x\, \mathrm{d}y = \int_{-\infty}^{\infty} F(x,y) \exp(i \vec k \cdot \vec r) \,\mathrm{d}x\, \mathrm{d}y$$
+$$\mathcal{F}[f](k_x, k_y) = \int_{-\infty}^{\infty} f(x,y) \exp(i (k_x \cdot x + k_y \cdot y)) \,\mathrm{d}x\, \mathrm{d}y = \int_{-\infty}^{\infty} f(x,y) \exp(i \vec k \cdot \vec r) \,\mathrm{d}x\, \mathrm{d}y$$
 
 If we transform this do polar coordinates $(r, \theta)$ and $(\kappa, \phi)$ we obtain
 
