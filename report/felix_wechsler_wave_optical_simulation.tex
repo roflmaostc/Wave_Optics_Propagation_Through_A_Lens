@@ -27,7 +27,7 @@
 
 
 \title{Wave Optical Simulation of Thick Optical Elements}
-\author{Felix Wechsler}
+\author{Felix Wechsler\footnote{École Polytechnique Fédérale de Lausanne (EPFL), Switzerland, \url{felixwechsler.science}}}
 \date{\today}
 \setlength\parindent{0pt}
 \begin{document}
@@ -71,7 +71,7 @@ The angular-spectrum method can be extended to multi-slice propagation by dividi
 described as a \textit{thin medium} which allows to include the effect of the medium as a phase shift to the electrical field.
 For example, propagation through a medium $n(x,y,z)$ can be described as a series of $N_z$ AS steps $\mathcal{A}$ which corresponding phase shift in between.
 The total propagation distance $z$ is split into $\Delta z = z / N_z$ steps.
-$n_0$ is an average refractive index of the medium. and $k_0$ is the wavenumber in this medium $n_0$. It can be written as
+$n_0$ is an average refractive index of the medium and $k_0$ is the wavenumber in this medium $n_0$. It can be written as
 \begin{align}
     \psi(x,y,z) = \underbrace{\mathcal{A}\bigg[\exp\left(i k_0 n(x,y, N_z \cdot \Delta z)\mathcal{A}\big[\exp\left(i k_0 n(x,y, (N_z - 1) \cdot \Delta z) \right) \cdots \psi(x,y, 0) \big] \right) \bigg]}_{N_z \text{ times application of }\mathcal{A}}. 
 \end{align}
@@ -104,7 +104,7 @@ This assumes there is a finite number of regions where $n$ suddenly changes such
 \end{align}
 $k_z^m$ is the wavenumber in the medium $m$.
 The MWPM can be implemented with one MS step for each medium $m$.
-Qualitatively, it resolves the issue of the MS to not use the correct diffraction kernel of the respective medium. If the medium is piecewise constant, the MPWM can be applied to the cost of one AS step for each medium.
+Qualitatively, it resolves the issue of the MS to not use the correct diffraction kernel of the respective medium. If the medium is piecewise constant, the MWPM can be applied to the cost of one AS step for each medium.
 
 \subsubsection{Hankel transform based methods}
 As the last concept we introduce a Hankel transform based wave propagation \cite{Guizar-Sicairos_Gutiérrez-Vega_2004}.
@@ -113,9 +113,9 @@ The Hankel transform is a generalization of the Fourier transform to cylindrical
 Let us recall that the Fourier transform can be written as
 
 \begin{equation}
-\mathcal{F}[f](k_x, k_y) = \int_{-\infty}^{\infty} F(x,y) \exp(i (k_x \cdot x + k_y \cdot y)) \,\mathrm{d}x\, \mathrm{d}y = \int_{-\infty}^{\infty} F(x,y) \exp(i \vec k \cdot \vec r) \,\mathrm{d}x\, \mathrm{d}y
+\mathcal{F}[f](k_x, k_y) = \int_{-\infty}^{\infty} f(x,y) \exp(i (k_x \cdot x + k_y \cdot y)) \,\mathrm{d}x\, \mathrm{d}y = \int_{-\infty}^{\infty} f(x,y) \exp(i \vec k \cdot \vec r) \,\mathrm{d}x\, \mathrm{d}y
 \end{equation}
-If we transform this do polar coordinates $(r, \theta)$ and $(\kappa, \phi)$ we obtain
+If we transform this to polar coordinates $(r, \theta)$ and $(\kappa, \phi)$ we obtain
 \begin{equation}
 \mathcal{F}[f](\kappa, \phi) = \int_{0}^{\infty} \int_{0}^{2\pi} r f(r, \theta)\cdot \exp(i \cdot \cos(\theta - \phi) \kappa r)  \,\mathrm{d}\theta\, \mathrm{d}r
 \end{equation}
@@ -137,7 +137,7 @@ With the Fast Hankel transform \cite{Guizar-Sicairos_Gutiérrez-Vega_2004} we ca
 
 \section{Simulation Results}
 \label{sec:sim}
-In this part, we present our main results of the simulation study. For all details of the simulation, please see the supplemental source code.
+In this part, we present our main results of the simulation study. For all details of the simulation, please see the supplemental source code\footnote{\url{github.com/roflmaostc/Wave_Optics_Propagation_Through_A_Lens/}}.
 In all three figures in this section, we show the propagated intensity of the incoming Gaussian beam of waist radius \SI{15}{\micro\meter} and $\lambda=\SI{633}{\nano\meter}$. The images are shown with a gamma factor of $0.2$ to increase visibility of low intensity regimes. The green lines always indicate the physical location of a glass ball with refractive index of $1.5$ which is embedded in air with $n=1$.
 Also, we distinguish between \textit{hard lens} and \textit{smooth lens}. The first one is a binary discretization of the refractive index array with either 1 or 1.5. The latter is a smooth discretization of the lens where voxels on the boundary have the weighted sum of $n=1$ and $n=1.5$ according to the volume of this voxel being inside of the lens.
 
@@ -172,14 +172,14 @@ The MWPM as proposed by \cite{schmidt2016wave} produces matching results for the
         \centering
         \includegraphics[width=\textwidth]{../figures/MWPM_soft.svg.png} 
     \end{subfigure}
-    \caption{}
+    \caption{Results of the MWPM simulation.}
     \label{fig:}
 \end{figure}
 This matches well with rigorous solutions of Maxwell's equation in literature. 
 
 \subsection{Hankel transform based methods}
 As the Hankel transform method is mathematically identical to the FFT based method for a circular symmetric case, the results are visually identical.
-However, due to the reduced computational load (from the 2D to 1D reduction), we can simulate $N_{x,y} = 2048$ and $N_z=1024$ and still obtain a calculation time of only $\SI{7}{\second}$. 
+However, due to the reduced computational load (from the 2D to 1D reduction), we can simulate $N_{x,y} = 2048$ and $N_z=1024$ at a faster calculation time of only $\SI{7}{\second}$. 
 \begin{figure}[H]
     \centering
     \begin{subfigure}[]{0.5\textwidth}
@@ -190,7 +190,7 @@ However, due to the reduced computational load (from the 2D to 1D reduction), we
         \centering
         \includegraphics[width=\textwidth]{../figures/Hankel_MWPM.svg.png} 
     \end{subfigure}
-    \caption{}
+    \caption{Results of the Hankel transform simulation.}
     \label{fig:}
 \end{figure}
 This significant decrease in computational time makes it an attractive candidate
@@ -199,10 +199,8 @@ to simulate circularly symmetric optical systems more efficiently.
 
 
 \section{Conclusion}
-As a conclusion, we demonstrated that the MS fails to solve the homogeneous Helmholtz equation. For the example of a thick lens it produces 
-a strong deviation from the geometrically derived focal length. The Hankel transform based method underlies the same physical mechanism and hence
-suffers from the exact same problem.
-However, the MWPM is able to reproduce the right focal length for the thick lens and compared with literature it matches well with the results of rigorous Maxwell solver.
+In conclusion, we demonstrated that the multi-slice method fails to solve the homogeneous Helmholtz equation, leading to significant deviations from the geometrically derived focal length in the case of a thick lens. Similarly, the Hankel transform-based method is subject to the same physical limitations and encounters the same issue. 
+However, the modified wave propagation method successfully reproduces the correct focal length for the thick lens and shows strong agreement with the results obtained from rigorous Maxwell solvers reported in the literature.
 
 \printbibliography
 
